@@ -1,6 +1,6 @@
 import pytest
 
-from dein_modul import Mail
+from scr.SplittingMailBatches.Classes import Mail
 
 
 @pytest.mark.parametrize(
