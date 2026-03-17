@@ -66,7 +66,7 @@ class Mail:
         }
         return any(wort in satz.lower().split() for wort in deutsche_woerter)
     
-    def themen_ermitteln_schlagworte(self, themen_schlagworte: Dict[str, List[List[str]]], verbose: bool = False) -> None:
+    def themen_ermitteln_schlagworte(self, themen_schlagworte: dict[str, list[list[str]]], verbose: bool = False) -> None:
         """
         Ermittelt Themen basierend auf Schlagworten und fügt sie dem Attribut 'themen' hinzu.
         

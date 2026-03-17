@@ -1,6 +1,6 @@
 import pytest
 
-from scr.SplittingMailBatches.Classes import Mail
+from classes.mail import Mail
 
 
 @pytest.mark.parametrize(
@@ -73,7 +73,7 @@ from scr.SplittingMailBatches.Classes import Mail
     ],
 )
 def test_referenzen_ermitteln(beschreibung, text, erwartet):
-    mail = Mail(text)
+    mail = Mail("testaccount@quadriga.eu", beschreibung, text)
     mail.referenzen_ermitteln()
 
     assert mail.referenzen == erwartet, (
