@@ -16,6 +16,7 @@ class Mail:
         self.absender = absender
         self.betreff = betreff
         self.text = text
+        
         self.saetze = []  # Neues Attribut für alle Sätze
         self.deutsche_saetze = []
         self.themen = []  # Neues Attribut für Themen
@@ -23,6 +24,7 @@ class Mail:
         self.status = ""  # Initialisiert als leerer String
         self.webid = set()
         self.thematische_zuordnungen = []  # Neues Attribut für thematische Zuordnungen
+        self.referenzen = set()
 
     def satztrenner(self) -> None:
         """
@@ -129,3 +131,27 @@ class Mail:
             self.referenzen = {mail.lower() for mail in treffer}
         else:
             self.referenzen = set(treffer)
+
+    def referenzen_umgebung_ausgeben(self, context_len=10):
+        dicts_list_of_references = []
+
+        for referenz in self.referenzen:
+            match_mail = re.search(re.escape(referenz), self.text)
+
+            if not match_mail:
+                continue  # optional: robust machen
+
+            beginn_mail = match_mail.start()
+            end_mail = match_mail.end()
+
+            # Ausdruck unklar
+            umgebung_beginn = max(0, beginn_mail - context_len)
+            umgebung_ende = min(len(self.text), end_mail + context_len)
+
+            dicts_list_of_references.append({
+                "absender": self.absender,
+                "referenz": referenz,
+                "text": self.text[umgebung_beginn:umgebung_ende],
+            })
+
+        return dicts_list_of_references    
