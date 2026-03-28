@@ -155,3 +155,128 @@ class Mail:
             })
 
         return dicts_list_of_references    
+
+
+from typing import List, Tuple, Dict, Any
+import pandas as pd
+
+
+class DictForMail:
+    """
+    Repository-Klasse für Mail-Objekte.
+
+    Attribute:
+        _items (Dict[str, Mail]):
+            Dictionary mit Absender als Schlüssel und Mail-Instanzen als Werte.
+
+        raw_data (List[Tuple[str, str, str]]):
+            Liste von Tupeln/Listen (absender, betreff, text)
+
+        absender (set[str]):
+            Menge aller bereits verarbeiteten Absender (zur Deduplizierung)
+    """
+
+    def __init__(self, raw_data: List[Tuple[str, str, str]] = None):
+        """
+        Initialisiert das Repository.
+
+        :param raw_data: Liste von 3er-Tupeln (absender, betreff, text)
+        """
+        self._items: Dict[str, Mail] = {}
+        self.raw_data = raw_data or []
+        self.absender: set[str] = set()
+
+    def add(self, obj: Mail) -> None:
+        """
+        Fügt eine Mail-Instanz hinzu (Key = absender).
+
+        :param obj: Mail-Objekt
+        """
+        self._items[obj.absender] = obj
+        self.absender.add(obj.absender)
+
+    @staticmethod
+    def from_raw_data(raw_data: Any, deduplizieren: bool = True) -> "DictForMail":
+        """
+        Erstellt ein DictForMail-Objekt aus Rohdaten.
+
+        Validiert die Struktur und erzeugt Mail-Instanzen.
+
+        :param raw_data: Liste von 3er-Tupeln/Listen:
+                         [(absender, betreff, text), ...]
+        :param deduplizieren: Wenn True, wird pro Absender nur eine Mail erzeugt
+        :return: Instanz von DictForMail
+        :raises ValueError: bei ungültiger Struktur oder ungültiger E-Mail
+        """
+
+        # --- Validierung Grundstruktur ---
+        if not isinstance(raw_data, list):
+            raise ValueError("raw_data muss eine Liste sein")
+
+        # Regex aus Mail-Klasse verwenden
+        email_pattern = Mail.DEFAULT_EMAIL_PATTERN
+
+        repo = DictForMail(raw_data=raw_data)
+
+        for entry in raw_data:
+            if not isinstance(entry, (list, tuple)) or len(entry) != 3:
+                raise ValueError(
+                    "Jeder Eintrag muss ein 3er-Tupel oder Liste sein (absender, betreff, text)"
+                )
+
+            absender, betreff, text = entry
+
+            # --- Typprüfung ---
+            if not all(isinstance(x, str) for x in entry):
+                raise ValueError("Alle Elemente müssen Strings sein")
+
+            # --- Validierung absender (E-Mail-Pattern) ---
+            if not email_pattern.search(absender):
+                raise ValueError(f"Ungültige E-Mail-Adresse: {absender}")
+
+            # --- Deduplizierung ---
+            if deduplizieren and absender in repo.absender:
+                continue
+
+            # --- Instanziierung ---
+            mail = Mail(absender, betreff, text)
+            repo.add(mail)
+
+        return repo
+
+    def print_thematische_zuordnungen(self) -> None:
+        """
+        Gibt alle thematischen Zuordnungen aller Mails aus.
+        """
+        for absender, mail in self._items.items():
+            print(f"Absender: {absender}, Betreff: {mail.betreff}")
+            for thema, schlagwortliste, satz in mail.thematische_zuordnungen:
+                print(f"Thema: {thema}")
+                print(f"Schlagworte: {', '.join(schlagwortliste)}")
+                print(f"Satz: {satz}")
+                print("-" * 40)
+            print("=" * 40)
+
+    def export_thematische_zuordnungen_to_excel(self, export_folder: str) -> None:
+        """
+        Exportiert thematische Zuordnungen in eine Excel-Datei.
+
+        :param export_folder: Zielordner
+        """
+        data = []
+
+        for absender, mail in self._items.items():
+            for thema, schlagwortliste, satz in mail.thematische_zuordnungen:
+                data.append([
+                    absender,
+                    thema,
+                    " ".join(schlagwortliste),
+                    satz.replace('\n', ' ').replace('\r', '').replace('\t', '')
+                ])
+
+        df = pd.DataFrame(
+            data,
+            columns=['absender', 'thema', 'schlagworte', 'satz']
+        )
+
+        df.to_excel(f"{export_folder}/thematische_zuordnungen.xlsx", index=False)
