@@ -1,4 +1,71 @@
 
+import os
+from typing import List, Dict, Set
+
+import os
+import os
+from dataclasses import dataclass
+from typing import List
+
+
+@dataclass
+class ValidationResult:
+    is_valid: bool
+    errors: List[str]
+
+
+class CSVHandler:
+    def __init__(self, filepath: str, encoding: str = "utf-8"):
+        self.filepath = filepath
+        self.encoding = encoding
+
+    @staticmethod
+    def validate_file(filepath: str, expected_encoding: str = "utf-8") -> ValidationResult:
+        errors = []
+
+        # Existenz prüfen
+        if not os.path.isfile(filepath):
+            errors.append("FILE_NOT_FOUND")
+
+        else:
+            # Lesbarkeit prüfen
+            if not os.access(filepath, os.R_OK):
+                errors.append("NOT_READABLE")
+
+            # Dateiendung prüfen
+            if not filepath.lower().endswith(".csv"):
+                errors.append("INVALID_TYPE")
+
+            # Größe prüfen
+            if os.path.getsize(filepath) == 0:
+                errors.append("EMPTY_FILE")
+
+            # Encoding prüfen (nur wenn bisher sinnvoll)
+            if not errors:
+                try:
+                    with open(filepath, "r", encoding=expected_encoding) as f:
+                        f.read(1024)
+                except UnicodeDecodeError:
+                    errors.append("ENCODING_ERROR")
+                except Exception:
+                    errors.append("UNKNOWN_ERROR")
+
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors
+        )
+
+    @classmethod
+    def from_file(cls, filepath: str, encoding: str = "utf-8"):
+        result = cls.validate_file(filepath, encoding)
+
+        if not result.is_valid:
+            print(f"[VALIDATION FAILED] {result.errors}")
+            return None
+
+        return cls(filepath, encoding)
+
+
 def read_csv_as_string(file_path: str) -> str:
     """
     Liest eine CSV-Datei ein und gibt deren Inhalt als String zurück.

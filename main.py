@@ -1,3 +1,84 @@
 import openpyxl
+import re
+import pandas as pd
+import os
+import shutil
+from typing import List, Dict, Set
 
 from classes import mail
+from classes.csvfile import CSVHandler
+
+
+if __name__ == "__main__":
+    file_path = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_25032026_5005.CSV'  # Beispielpfad zur CSV-Datei
+    
+    result = CSVHandler.validate_file("data.csv")
+
+    if not result.is_valid:
+        print("Fehler:", result.errors)
+    else:
+        handler = CSVHandler.from_file("data.csv")
+
+
+
+    if False:
+
+        csv_content = read_csv_as_string(file_path)
+        
+        # Definieren Sie die Regex-Muster nach Bedarf
+        first_split_regex = r'"\n"'  # Beispiel-Regex zum ersten Teilen
+        second_split_regex = r'","'  # Beispiel-Regex zum zweiten Teilen
+        
+        # Aufteilen des CSV-Inhalts
+        parts = split_string(csv_content, first_split_regex)
+        
+        # Erstellen des Dictionaries mit Mail-Instanzen
+        mails_dict = process_mail_parts(parts, second_split_regex)
+        
+        # Anwenden der Satztrennungsfunktion auf jede Mail-Instanz
+        for mail in mails_dict.values():
+            mail.satztrenner()
+            # mail.satztrenner_deutsch() # Deaktiviert für diesen Schritt
+            mail.themen_ermitteln_schlagworte(themen_schlagworte, verbose=False)
+        
+        # Einlesen und Umwandeln der DWH-CSV-Datei in ein Dictionary
+        filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_25032026.csv'
+        results_dict_dwh_abgleich  = csv_to_dict(filepath_dwh_ergebnisse, delimiter=",")
+
+        # Abgleich der Mail-Instanzen mit den DWH-Daten
+        abgleich_mails_dwh(mails_dict, results_dict_dwh_abgleich)
+        
+        # Exportieren der Mails in Excel-Tabellen
+        leere_ordner('C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen')
+        export_mails_to_excel(mails_dict, 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen')
+
+        # Ausgabe der thematischen Zuordnungen
+        print_thematische_zuordnungen(mails_dict)
+
+        # Ausgabe der thematischen Zuordnungen als Excel-Tabelle
+        leere_ordner('C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle')
+        export_thematische_zuordnungen_to_excel(mails_dict, 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle')
+
+        referenzen_liste_gekuerzt = []
+        
+        for mail in mails_dict.values():
+            mail.referenzen_ermitteln()
+            referenzen_liste_gekuerzt.extend(mail.referenzen_umgebung_ausgeben(context_len=80))
+
+        referenzen_liste = []
+        
+        for mail in mails_dict.values():
+            if mail.referenzen:
+                for referenz in mail.referenzen:
+                    if referenz.lower() != mail.absender.lower():
+                        referenzen_liste.append({"absender" : mail.absender,
+                                                "referenz" : referenz,
+                                                "text" : mail.text})
+
+        referenzen_dict = pd.DataFrame(referenzen_liste)
+        referenzen_dict.to_excel("C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\output.xlsx", index=False)
+
+        referenzen_dict_gekuerzt = pd.DataFrame(referenzen_liste_gekuerzt)
+        referenzen_dict_gekuerzt["text"] = referenzen_dict_gekuerzt["text"].str.replace(r"\r?\n", " ", regex=True)
+        referenzen_dict_gekuerzt.to_excel("C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\output_gekuerzt.xlsx", index=False)
+
