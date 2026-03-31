@@ -6,6 +6,9 @@ import os
 import os
 from dataclasses import dataclass
 from typing import List
+import os
+from dataclasses import dataclass
+from typing import List
 
 
 @dataclass
@@ -15,21 +18,17 @@ class ValidationResult:
 
 
 class CSVHandler:
-    def __init__(self, filepath: str, encoding: str = "utf-8"):
+    def __init__(self, filepath: str, encoding: str = "utf-8", content: str = ""):
         self.filepath = filepath
         self.encoding = encoding
+        self.content = content  # neues Attribut
 
     @staticmethod
     def validate_file(filepath: str, expected_encoding: str = "utf-8") -> ValidationResult:
-        
-        import os
-
-        dir_path = os.path.dirname(filepath) or "."
-        file_name = os.path.basename(filepath)
-        
         errors = []
 
-        # Existenz prüfen
+        dir_path = os.path.dirname(filepath) or "."
+
         if not os.path.exists(dir_path):
             errors.append("DIRECTORY_NOT_FOUND")
 
@@ -43,19 +42,12 @@ class CSVHandler:
             errors.append("NOT_A_FILE")
 
         else:
-            # Lesbarkeit prüfen
-            if not os.access(filepath, os.R_OK):
-                errors.append("NOT_READABLE")
-
-            # Dateiendung prüfen
             if not filepath.lower().endswith(".csv"):
                 errors.append("INVALID_TYPE")
 
-            # Größe prüfen
             if os.path.getsize(filepath) == 0:
                 errors.append("EMPTY_FILE")
 
-            # Encoding prüfen (nur wenn bisher sinnvoll)
             if not errors:
                 try:
                     with open(filepath, "r", encoding=expected_encoding) as f:
@@ -65,32 +57,24 @@ class CSVHandler:
                 except Exception:
                     errors.append("UNKNOWN_ERROR")
 
-        return ValidationResult(
-            is_valid=len(errors) == 0,
-            errors=errors
-        )
+        return ValidationResult(len(errors) == 0, errors)
 
     @classmethod
     def from_file(cls, filepath: str, encoding: str = "utf-8"):
+        # Encoding wird hier weitergereicht → gleiche Prüfung
         result = cls.validate_file(filepath, encoding)
 
         if not result.is_valid:
             print(f"[VALIDATION FAILED] {result.errors}")
             return None
 
-        return cls(filepath, encoding)
+        # Datei vollständig einlesen
+        with open(filepath, "r", encoding=encoding) as f:
+            content = f.read()
+
+        return cls(filepath, encoding, content)
 
 
-def read_csv_as_string(file_path: str) -> str:
-    """
-    Liest eine CSV-Datei ein und gibt deren Inhalt als String zurück.
-    
-    :param file_path: Pfad zur CSV-Datei
-    :return: Inhalt der CSV-Datei als String
-    """
-    with open(file_path, 'r', encoding='utf-8') as file:
-        return file.read()
-    
 
 
 def csv_to_dict(filepath: str, delimiter: str = ';', encoding: str = 'utf-8', dublettenloeschung: bool = False) -> Dict[str, Dict[str, Set]]:

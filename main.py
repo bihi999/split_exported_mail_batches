@@ -19,7 +19,7 @@ if __name__ == "__main__":
     else:
         handler = CSVHandler.from_file(file_path)
 
-
+    print(len(handler.content))
 
     if False:
 
