@@ -21,11 +21,26 @@ class CSVHandler:
 
     @staticmethod
     def validate_file(filepath: str, expected_encoding: str = "utf-8") -> ValidationResult:
+        
+        import os
+
+        dir_path = os.path.dirname(filepath) or "."
+        file_name = os.path.basename(filepath)
+        
         errors = []
 
         # Existenz prüfen
-        if not os.path.isfile(filepath):
+        if not os.path.exists(dir_path):
+            errors.append("DIRECTORY_NOT_FOUND")
+
+        elif not os.access(dir_path, os.R_OK):
+            errors.append("DIRECTORY_NOT_READABLE")
+
+        elif not os.path.exists(filepath):
             errors.append("FILE_NOT_FOUND")
+
+        elif not os.path.isfile(filepath):
+            errors.append("NOT_A_FILE")
 
         else:
             # Lesbarkeit prüfen

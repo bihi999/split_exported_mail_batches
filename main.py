@@ -10,14 +10,14 @@ from classes.csvfile import CSVHandler
 
 
 if __name__ == "__main__":
-    file_path = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_25032026_5005.CSV'  # Beispielpfad zur CSV-Datei
+    file_path = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_30032026_5701.CSV'  
     
-    result = CSVHandler.validate_file("data.csv")
+    result = CSVHandler.validate_file(file_path)
 
     if not result.is_valid:
         print("Fehler:", result.errors)
     else:
-        handler = CSVHandler.from_file("data.csv")
+        handler = CSVHandler.from_file(file_path)
 
 
 
