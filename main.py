@@ -9,18 +9,46 @@ from classes import mail
 from classes.csvfile import CSVHandler
 
 
+mapping_dataframes = { "abgleich_dwh": {
+                                "absender": None,
+                                "webid": lambda x: pd.to_numeric(x, errors="coerce").astype("Int64"),
+                                "webfirmenid": lambda x: pd.to_numeric(x, errors="coerce").astype("Int64"),
+                            }
+                        }
+
+
+
 if __name__ == "__main__":
-    file_path = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_30032026_5701.CSV'  
+    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_30032026_5701.CSV'  
+    filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
     
-    result = CSVHandler.validate_file(file_path)
-
+    
+    result = CSVHandler.validate_file(filepath_mails)
     if not result.is_valid:
-        print("Fehler:", result.errors)
+        print("Fehler Dateipfad Mailexport:", result.errors)
     else:
-        handler = CSVHandler.from_file(file_path)
+        csv_mail_handler = CSVHandler.from_file(filepath_mails)
+        print(len(csv_mail_handler.content))
 
-    print(len(handler.content))
+    
+    result = CSVHandler.validate_file(filepath_dwh_ergebnisse)
+    if not result.is_valid:
+        print("Fehler Dateipfad DWH_Ergebnisse:", result.errors)
+    else:
+        csv_dwh_handler = CSVHandler.from_file(filepath_dwh_ergebnisse)
+        df_dwh_results = csv_dwh_handler.csv_to_pandas(",")
+        if not isinstance(df_dwh_results, pd.DataFrame):
+            print("CSV ließt sich nicht als DataFrame einlesen: {}".format(df_dwh_results))
+        else:
+            df_dwh_results = csv_dwh_handler.transform_pandas(df_dwh_results, mapping_dataframes, "abgleich_dwh")
+            if not isinstance(df_dwh_results, pd.DataFrame):
+                print("Erstellter DataFrame ließ sich nicht korrekt transformieren: {}".format(df_dwh_results))
 
+
+    print(df_dwh_results.head)
+
+
+    
     if False:
 
         csv_content = read_csv_as_string(file_path)

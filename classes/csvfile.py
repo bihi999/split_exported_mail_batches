@@ -1,15 +1,9 @@
 
-import os
 from typing import List, Dict, Set
-
-import os
-import os
+from io import StringIO
 from dataclasses import dataclass
-from typing import List
 import os
-from dataclasses import dataclass
-from typing import List
-
+import pandas as pd
 
 @dataclass
 class ValidationResult:
@@ -22,6 +16,7 @@ class CSVHandler:
         self.filepath = filepath
         self.encoding = encoding
         self.content = content  # neues Attribut
+        self.exceptions = set() # neues Attribut
 
     @staticmethod
     def validate_file(filepath: str, expected_encoding: str = "utf-8") -> ValidationResult:
@@ -73,6 +68,75 @@ class CSVHandler:
             content = f.read()
 
         return cls(filepath, encoding, content)
+    
+
+    def csv_to_pandas(self, sep):
+        """
+        Keine Dopplung - verarbeitet wird der bereits eingelesene
+        Content - wird dafür gepuffert. Keine Redundanz - der DF
+        soll nicht dauerhaft gespeichert - nur weitergereicht werden.
+        
+        Liest self.content in einen pandas DataFrame.
+        - Kein Default für sep
+        - Bei Fehler: Exception-Typ zurückgeben + Exception speichern
+        """
+        try:
+            df = pd.read_csv(
+                StringIO(self.content),
+                sep=sep,
+                encoding=self.encoding,
+                engine="python"  # wichtig für flexible Separatoren
+            )
+            return df
+
+        except Exception as e:
+            self.exceptions.add(e)
+            print(e)
+            return type(e)
+        
+
+    mapping = { "abgleich_dwh": {
+                                "absender": None,
+                                "webid": lambda x: pd.to_numeric(x, errors="coerce"),
+                                "webfirmenid": lambda x: pd.to_numeric(x, errors="coerce"),
+                            }
+                        }
+                            
+
+
+    
+    def transform_pandas(self, df, mapping: dict, use_case: str):
+        """
+        Transformiert einen DataFrame basierend auf einem Mapping.
+
+        - mapping: Dict mit Use-Cases
+        - use_case: z. B. "abgleich_dwh"
+        - Rückgabe:
+            - DataFrame bei Erfolg
+            - Exception-Typ bei Fehler
+        """
+
+        try:
+            if use_case not in mapping:
+                raise KeyError(f"Use case '{use_case}' nicht im Mapping vorhanden")
+
+            config = mapping[use_case]
+
+            # Spalten prüfen
+            missing_cols = [col for col in config.keys() if col not in df.columns]
+            if missing_cols:
+                raise ValueError(f"Fehlende Spalten: {missing_cols}")
+
+            # Transformation anwenden
+            for col, func in config.items():
+                if func is not None:
+                    df[col] = func(df[col])
+
+            return df
+
+        except Exception as e:
+            self.exceptions.add(e)
+            return type(e)
 
 
 
@@ -117,3 +181,4 @@ def csv_to_dict(filepath: str, delimiter: str = ';', encoding: str = 'utf-8', du
                             result_dict[absender][col].add(row[col])
     
     return result_dict
+
