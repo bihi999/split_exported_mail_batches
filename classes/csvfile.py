@@ -4,6 +4,7 @@ from io import StringIO
 from dataclasses import dataclass
 import os
 import pandas as pd
+from collections import Counter
 
 @dataclass
 class ValidationResult:
@@ -91,19 +92,8 @@ class CSVHandler:
 
         except Exception as e:
             self.exceptions.add(e)
-            print(e)
             return type(e)
-        
-
-    mapping = { "abgleich_dwh": {
-                                "absender": None,
-                                "webid": lambda x: pd.to_numeric(x, errors="coerce"),
-                                "webfirmenid": lambda x: pd.to_numeric(x, errors="coerce"),
-                            }
-                        }
-                            
-
-
+   
     
     def transform_pandas(self, df, mapping: dict, use_case: str):
         """
@@ -139,6 +129,93 @@ class CSVHandler:
             return type(e)
 
 
+    def split_content(self, separators: list[str]):
+        """
+        Zerlegt self.content hierarchisch anhand mehrerer Regex-Separatoren.
+
+        Konzept:
+        ----------
+        Die Zerlegung erfolgt rekursiv / verschachtelt (nested), nicht flach.
+        Jeder Separator entspricht einer Hierarchieebene.
+
+        Beispiele:
+        ----------
+        - ["\\n", "\\|"]  → Mail -> Feld
+        - ["\\n", "\\|", "\\."] → Mail -> Feld -> Satz
+
+        Ablauf:
+        ----------
+        1. Auf oberster Ebene wird der gesamte Inhalt gesplittet
+        2. Für jedes Teilstück wird der nächste Separator angewendet
+        3. Dies erfolgt rekursiv bis zur letzten Ebene
+
+        Ergebnis:
+        ----------
+        - Verschachtelte Listenstruktur entsprechend der Hierarchie
+        - Report mit Strukturinformationen
+
+        Einschränkungen:
+        ----------
+        - Maximal 3 Separatoren erlaubt
+
+        Rückgabe:
+        ----------
+        Tuple:
+        (
+            nested_structure: list,
+            report: dict
+        )
+
+        Bei Fehler:
+        ----------
+        - Exception wird gespeichert
+        - Rückgabe: Exception-Typ
+        """
+
+        if not separators or len(separators) > 3:
+            raise ValueError("Es sind 1 bis maximal 3 Separatoren erlaubt.")
+
+        try:
+            level_counts = {}
+
+            def recursive_split(text, seps, level=1):
+                parts = re.split(seps[0], text)
+                level_counts[f"level_{level}"] = level_counts.get(f"level_{level}", 0) + len(parts)
+
+                if len(seps) == 1:
+                    return parts
+                else:
+                    return [recursive_split(p, seps[1:], level + 1) for p in parts]
+
+            nested = recursive_split(self.content, separators)
+
+            # Analyse der Blattlängen (Endebene)
+            def collect_leaf_lengths(data):
+                if isinstance(data, list):
+                    if all(not isinstance(x, list) for x in data):
+                        return [len(data)]
+                    else:
+                        result = []
+                        for item in data:
+                            result.extend(collect_leaf_lengths(item))
+                        return result
+                return []
+
+            leaf_lengths = collect_leaf_lengths(nested)
+            tuple_lengths = dict(Counter(leaf_lengths))
+
+            report = {
+                "levels": len(separators),
+                "separators": separators,
+                "level_counts": level_counts,
+                "leaf_group_sizes": tuple_lengths,
+            }
+
+            return nested, report
+
+        except Exception as e:
+            self.exceptions.add(e)
+            return type(e)
 
 
 def csv_to_dict(filepath: str, delimiter: str = ';', encoding: str = 'utf-8', dublettenloeschung: bool = False) -> Dict[str, Dict[str, Set]]:

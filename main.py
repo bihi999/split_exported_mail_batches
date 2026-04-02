@@ -22,7 +22,7 @@ if __name__ == "__main__":
     filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_30032026_5701.CSV'  
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
     
-    
+#----------------Sehr aufwendige Umsetzung - Zusammenfassung möglich
     result = CSVHandler.validate_file(filepath_mails)
     if not result.is_valid:
         print("Fehler Dateipfad Mailexport:", result.errors)
