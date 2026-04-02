@@ -52,18 +52,24 @@ if __name__ == "__main__":
     splitted_mails, report_splitting = csv_mail_handler.split_content([r'"\n"', r'","'])
     print(report_splitting)
 
-    for mail_entry in splitted_mails:
-        print("\n")
-        if len(mail_entry) != 3:
-            print("Eintrag mit unerwarteter Länge.")
-            continue
-        else:
-            for field in mail_entry:
-                print(field[:10])
+    #-----Ausgabe zur Kontrolle ersetzen - Report liefert die Info: Wurde erwartete Anzahl von Daten eingelesen und ist Anzahl auf Level 2 wie erwartet ein Vielfaches von 3 (Elementen)
+    #for mail_entry in splitted_mails:
+     #   print("\n")
+      #  if len(mail_entry) != 3:
+       #     print("Eintrag mit unerwarteter Länge.")
+        #    continue
+        #else:
+        #    for field in mail_entry:
+        #        print(field[:10])
             
+    mail_dict = mail.DictForMail.from_raw_data(splitted_mails)
+    
+    for key, value in mail_dict.items():
+        print(key)
+    
 
-    
-    
+
+
     if False:
 
         csv_content = read_csv_as_string(file_path)

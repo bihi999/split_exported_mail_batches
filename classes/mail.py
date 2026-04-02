@@ -1,4 +1,6 @@
 import re
+from typing import List, Tuple, Dict, Any
+import pandas as pd
 
 
 class Mail:
@@ -157,10 +159,6 @@ class Mail:
         return dicts_list_of_references    
 
 
-from typing import List, Tuple, Dict, Any
-import pandas as pd
-
-
 class DictForMail:
     """
     Repository-Klasse für Mail-Objekte.
@@ -228,12 +226,14 @@ class DictForMail:
 
             # --- Typprüfung ---
             if not all(isinstance(x, str) for x in entry):
-                raise ValueError("Alle Elemente müssen Strings sein")
+                #raise ValueError("Alle Elemente müssen Strings sein")
+                continue
 
             # --- Validierung absender (E-Mail-Pattern) ---
             if not email_pattern.search(absender):
-                raise ValueError(f"Ungültige E-Mail-Adresse: {absender}")
-
+                #raise ValueError("Ungültige E-Mail-Adresse: {}".format(absender))
+                continue
+                
             # --- Deduplizierung ---
             if deduplizieren and absender in repo.absender:
                 continue
