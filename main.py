@@ -19,10 +19,12 @@ mapping_dataframes = { "abgleich_dwh": {
 
 
 if __name__ == "__main__":
-    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_30032026_5701.CSV'  
+    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_02042026_5.CSV'  
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
     
-#----------------Sehr aufwendige Umsetzung - Zusammenfassung möglich
+#----------------Sehr aufwendige Umsetzung - Zusammenfassung
+#----------------Exception-Handling unbefriedigend - sauber über Klassenattribut .exceptions handhaben und vereinheitlichen
+
     result = CSVHandler.validate_file(filepath_mails)
     if not result.is_valid:
         print("Fehler Dateipfad Mailexport:", result.errors)
@@ -45,9 +47,22 @@ if __name__ == "__main__":
                 print("Erstellter DataFrame ließ sich nicht korrekt transformieren: {}".format(df_dwh_results))
 
 
-    print(df_dwh_results.head)
+#----------------------------------Neuer Ablauf Split-and-Rule
 
+    splitted_mails, report_splitting = csv_mail_handler.split_content([r'"\n"', r'","'])
+    print(report_splitting)
 
+    for mail_entry in splitted_mails:
+        print("\n")
+        if len(mail_entry) != 3:
+            print("Eintrag mit unerwarteter Länge.")
+            continue
+        else:
+            for field in mail_entry:
+                print(field[:10])
+            
+
+    
     
     if False:
 

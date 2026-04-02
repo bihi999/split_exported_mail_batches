@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import os
 import pandas as pd
 from collections import Counter
+import re
 
 @dataclass
 class ValidationResult:
@@ -169,7 +170,7 @@ class CSVHandler:
         Bei Fehler:
         ----------
         - Exception wird gespeichert
-        - Rückgabe: Exception-Typ
+        - Rückgabe: None und leerer Report
         """
 
         if not separators or len(separators) > 3:
@@ -215,7 +216,7 @@ class CSVHandler:
 
         except Exception as e:
             self.exceptions.add(e)
-            return type(e)
+            return None, {}
 
 
 def csv_to_dict(filepath: str, delimiter: str = ';', encoding: str = 'utf-8', dublettenloeschung: bool = False) -> Dict[str, Dict[str, Set]]:
