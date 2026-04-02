@@ -8,6 +8,8 @@ from typing import List, Dict, Set
 from classes import mail
 from classes.csvfile import CSVHandler
 
+from korpus import ausgeschieden_korpus01
+
 
 mapping_dataframes = { "abgleich_dwh": {
                                 "absender": None,
@@ -17,11 +19,38 @@ mapping_dataframes = { "abgleich_dwh": {
                         }
 
 
+#------Auslagern in die Hilfsfunktionen
+def leere_ordner(pfad):
+    # Überprüfe, ob der Pfad tatsächlich existiert und ein Verzeichnis ist
+    if os.path.exists(pfad) and os.path.isdir(pfad):
+        # Iteriere über alle Dateien und Unterordner im Verzeichnis
+        for dateiname in os.listdir(pfad):
+            dateipfad = os.path.join(pfad, dateiname)
+            try:
+                # Wenn es ein Unterordner ist, benutze shutil.rmtree um den Ordner und alle seine Inhalte zu löschen
+                if os.path.isdir(dateipfad):
+                    shutil.rmtree(dateipfad)
+                # Wenn es eine Datei ist, benutze os.remove um die Datei zu löschen
+                else:
+                    os.remove(dateipfad)
+            except Exception as e:
+                print(f"Fehler beim Löschen von {dateipfad}: {e}")
+    else:
+        print("Gegebener Pfad ist kein Verzeichnis oder existiert nicht")
+
+
 
 if __name__ == "__main__":
     filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_02042026_5.CSV'  
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
-    
+    ordnerpfad_einstufungen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle'
+
+    leere_ordner(ordnerpfad_einstufungen)
+
+    #------Funktion muss noch angepasst werden-------
+    #export_thematische_zuordnungen_to_excel(mails_dict, 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle')
+
+
 #----------------Sehr aufwendige Umsetzung - Zusammenfassung
 #----------------Exception-Handling unbefriedigend - sauber über Klassenattribut .exceptions handhaben und vereinheitlichen
 
@@ -64,9 +93,9 @@ if __name__ == "__main__":
             
     mail_dict = mail.DictForMail.from_raw_data(splitted_mails)
     
-    for key, value in mail_dict.items():
-        print(key)
-    
+    for absender, mailinstanz in mail_dict._items.items():
+        mailinstanz.themen_ermitteln_schlagworte(ausgeschieden_korpus01.themen_schlagworte)
+        print(mailinstanz.thematische_zuordnungen)
 
 
 
