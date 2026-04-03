@@ -41,9 +41,10 @@ def leere_ordner(pfad):
 
 
 if __name__ == "__main__":
-    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_02042026_5.CSV'  
+    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_03042026_18.CSV'  
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
     ordnerpfad_einstufungen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle'
+    
 
     leere_ordner(ordnerpfad_einstufungen)
 
@@ -94,8 +95,12 @@ if __name__ == "__main__":
     mail_dict = mail.DictForMail.from_raw_data(splitted_mails)
     
     for absender, mailinstanz in mail_dict._items.items():
+        mailinstanz.satztrenner()
         mailinstanz.themen_ermitteln_schlagworte(ausgeschieden_korpus01.themen_schlagworte)
-        print(mailinstanz.thematische_zuordnungen)
+        #print(mailinstanz.thematische_zuordnungen)
+
+    mail_dict.print_thematische_zuordnungen()
+    mail_dict.export_thematische_zuordnungen_to_excel(ordnerpfad_einstufungen)
 
 
 

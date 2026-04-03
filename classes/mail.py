@@ -70,6 +70,8 @@ class Mail:
         }
         return any(wort in satz.lower().split() for wort in deutsche_woerter)
     
+    
+
     def themen_ermitteln_schlagworte(self, themen_schlagworte: dict[str, list[list[str]]], verbose: bool = False) -> None:
         """
         Ermittelt Themen basierend auf Schlagworten und fügt sie dem Attribut 'themen' hinzu.
@@ -78,17 +80,23 @@ class Mail:
         :param verbose: Boolescher Wert, der angibt, ob alle Treffer gefunden werden sollen (True) oder ob nach dem ersten Treffer abgebrochen werden soll (False)
         """
         for thema, schlagwortlisten in themen_schlagworte.items():
-            for satz in self.saetze:
-                satz_lower = satz.lower()
-                for schlagwortliste in schlagwortlisten:
-                    if all(wort in satz_lower for wort in schlagwortliste):
-                        self.themen.append(thema)
-                        self.thematische_zuordnungen.append((thema, schlagwortliste, satz))
-                        if not verbose:
-                            break
-                if not verbose and thema in self.themen:
-                    break
+            if self.saetze:
+                for satz in self.saetze:
+                    satz_lower = satz.lower()
+                    for schlagwortliste in schlagwortlisten:
+                        if all(wort in satz_lower for wort in schlagwortliste):
+                            self.themen.append(thema)
+                            self.thematische_zuordnungen.append((thema, schlagwortliste, satz))
+                            if not verbose:
+                                break
+                    if not verbose and thema in self.themen:
+                        break
+            else:
+                print("Mail.themen_ermitteln_schlagworte: self.saetze enthalten keinen Inhalt.")
 
+    
+    
+    
     DEFAULT_EMAIL_PATTERN = re.compile(
         r"""
         (?:(?:mailto:)\s*)?                 # optional: mailto:
@@ -224,6 +232,9 @@ class DictForMail:
 
             absender, betreff, text = entry
 
+        #------Generell wie kann Exception-Handling generell besser in Ablauf integriert werden?
+        #------Auch hier als Attribut verfügbar machen und die Exceptions sammeln
+
             # --- Typprüfung ---
             if not all(isinstance(x, str) for x in entry):
                 #raise ValueError("Alle Elemente müssen Strings sein")
@@ -233,7 +244,7 @@ class DictForMail:
             if not email_pattern.search(absender):
                 #raise ValueError("Ungültige E-Mail-Adresse: {}".format(absender))
                 continue
-                
+
             # --- Deduplizierung ---
             if deduplizieren and absender in repo.absender:
                 continue
