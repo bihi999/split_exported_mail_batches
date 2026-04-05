@@ -44,16 +44,18 @@ if __name__ == "__main__":
     filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_03042026_18.CSV'  
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
     ordnerpfad_einstufungen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle'
-    
+    ordnerpfad_einstufungen_tabellen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen'
 
+
+#---------a_ Baue einen Handler für die Umgebung: Ordnerpfade einlesen - Abfragen ob löschen - Ordnerpfade zur Verfügung stellen - Exceptions sammeln
+#---------h_ Die Schreibfunktionen der Klassen kennen diese Funktion nicht und damit bestehen aktuelle und ältere Ergebnislisten nebeneinander
+#---------h_ Exceptions von leere_ordner() laufen ins Leere - Funktionen erhalten im Exception-Fall keine alternativen Pfade
     leere_ordner(ordnerpfad_einstufungen)
+    leere_ordner(ordnerpfad_einstufungen_tabellen)
 
-    #------Funktion muss noch angepasst werden-------
-    #export_thematische_zuordnungen_to_excel(mails_dict, 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle')
-
-
-#----------------Sehr aufwendige Umsetzung - Zusammenfassung
-#----------------Exception-Handling unbefriedigend - sauber über Klassenattribut .exceptions handhaben und vereinheitlichen
+    
+#----------------h_ Sehr aufwendige Umsetzung - Zusammenfassung
+#----------------h_Exception-Handling unbefriedigend - sauber über Klassenattribut .exceptions handhaben und vereinheitlichen
 
     result = CSVHandler.validate_file(filepath_mails)
     if not result.is_valid:
@@ -97,11 +99,12 @@ if __name__ == "__main__":
     for absender, mailinstanz in mail_dict._items.items():
         mailinstanz.satztrenner()
         mailinstanz.themen_ermitteln_schlagworte(ausgeschieden_korpus01.themen_schlagworte)
-        #print(mailinstanz.thematische_zuordnungen)
-
+        
+    
     mail_dict.print_thematische_zuordnungen()
     mail_dict.export_thematische_zuordnungen_to_excel(ordnerpfad_einstufungen)
 
+    mail_dict.export_mails_to_excel(ordnerpfad_einstufungen_tabellen)
 
 
     if False:
