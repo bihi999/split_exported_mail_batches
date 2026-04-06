@@ -45,7 +45,7 @@ if __name__ == "__main__":
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
     ordnerpfad_einstufungen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle'
     ordnerpfad_einstufungen_tabellen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen'
-
+    ordnerpfad_referenzen = "C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\output.xlsx"
 
 #---------a_ Baue einen Handler für die Umgebung: Ordnerpfade einlesen - Abfragen ob löschen - Ordnerpfade zur Verfügung stellen - Exceptions sammeln
 #---------h_ Die Schreibfunktionen der Klassen kennen diese Funktion nicht und damit bestehen aktuelle und ältere Ergebnislisten nebeneinander
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     
 #----------------h_ Sehr aufwendige Umsetzung - Zusammenfassung
-#----------------h_Exception-Handling unbefriedigend - sauber über Klassenattribut .exceptions handhaben und vereinheitlichen
+#----------------h_ Exception-Handling unbefriedigend - sauber über Klassenattribut .exceptions handhaben und vereinheitlichen
 
     result = CSVHandler.validate_file(filepath_mails)
     if not result.is_valid:
@@ -105,6 +105,14 @@ if __name__ == "__main__":
     mail_dict.export_thematische_zuordnungen_to_excel(ordnerpfad_einstufungen)
 
     mail_dict.export_mails_to_excel(ordnerpfad_einstufungen_tabellen)
+
+
+    for absender, mailinstanz in mail_dict._items.items():
+        mailinstanz.referenzen_ermitteln()
+
+    mail_dict.export_references_to_excel(ordnerpfad_referenzen, show_dataframe=True)
+        
+
 
 
     if False:

@@ -1,6 +1,7 @@
 import re
 from typing import List, Tuple, Dict, Any
 import pandas as pd
+import pprint
 
 
 class Mail:
@@ -70,7 +71,6 @@ class Mail:
         }
         return any(wort in satz.lower().split() for wort in deutsche_woerter)
     
-    
 
     def themen_ermitteln_schlagworte(self, themen_schlagworte: dict[str, list[list[str]]], verbose: bool = False) -> None:
         """
@@ -94,7 +94,6 @@ class Mail:
             else:
                 print("Mail.themen_ermitteln_schlagworte: self.saetze enthalten keinen Inhalt.")
 
-    
     
     def satztrenner(self) -> None:
         """
@@ -158,14 +157,25 @@ class Mail:
         else:
             regex = pattern
 
+        #----h_ sauberer fassen
         treffer = regex.findall(self.text)
+
+        treffer_temp = []
+        for mail_treffer in treffer:
+            print(mail_treffer)
+            if not mail_treffer.lower() == self.absender.lower():
+                treffer_temp.append(mail_treffer)
+            else:
+                continue
+
+        treffer = treffer_temp
 
         if normalisiere_kleinschreibung:
             self.referenzen = {mail.lower() for mail in treffer}
         else:
             self.referenzen = set(treffer)
 
-    def referenzen_umgebung_ausgeben(self, context_len=10):
+    def referenzen_umgebung_ausgeben(self, context_len=80):
         dicts_list_of_references = []
 
         for referenz in self.referenzen:
@@ -177,17 +187,18 @@ class Mail:
             beginn_mail = match_mail.start()
             end_mail = match_mail.end()
 
-            # Ausdruck unklar
             umgebung_beginn = max(0, beginn_mail - context_len)
             umgebung_ende = min(len(self.text), end_mail + context_len)
 
             dicts_list_of_references.append({
                 "absender": self.absender,
                 "referenz": referenz,
-                "text": self.text[umgebung_beginn:umgebung_ende],
+                "text": self.text[umgebung_beginn:umgebung_ende].replace(r"\r|\n", " ")
             })
 
         return dicts_list_of_references    
+
+
 
 
 class DictForMail:
@@ -387,3 +398,26 @@ class DictForMail:
             
             df = pd.DataFrame(data, columns=['absender', 'betreff', 'text', 'kunde', 'status', 'webid'])
             df.to_excel(f"{export_path}/ohne_thema.xlsx", index=False)    
+
+    def export_references_to_excel(self, export_path: str, show_dataframe: bool = False):
+        """
+            Erstelle eine leere Liste.
+            Iteriere über die Mail-Instanzen in self._items und calle referenzen_umgebung_ausgeben.
+            Sammle die in Listen organisierten Dictionaries in der erzeugten Liste.
+            Erzeuge daraus einen Data Frame.
+            Schreibe ihn via .to_excel in den export_path.
+        """
+        
+        liste_ermittelter_referenzen = []
+        for mail in self._items.values():
+            if mail.referenzen:
+                liste_ermittelter_referenzen.extend(mail.referenzen_umgebung_ausgeben())
+            else:
+                print("DictForMail.export_references_to_excel: Mail-Instanz enthält keine Referenzen.")
+        
+        referenzen_dict_gekuerzt = pd.DataFrame(liste_ermittelter_referenzen)
+        if show_dataframe:
+            print(referenzen_dict_gekuerzt.head())
+        referenzen_dict_gekuerzt.to_excel(export_path, index=False)
+
+
