@@ -20,14 +20,25 @@ class Mail:
         self.betreff = betreff
         self.text = text
         
-        self.saetze = []  # Neues Attribut für alle Sätze
-        self.deutsche_saetze = []
-        self.themen = []  # Neues Attribut für Themen
-        self.kunde = False
-        self.status = ""  # Initialisiert als leerer String
-        self.webid = set()
-        self.thematische_zuordnungen = []  # Neues Attribut für thematische Zuordnungen
-        self.referenzen = set()
+        self.saetze = []  
+        
+        #--------       self.deutsche_saetze = [] - Logik unklar - Redundanz und zugleich Nutzen unklar.
+        
+        self.themen = []  # Wird gleichsinnig zu thematische_zuordnungen befüllt - Wieder: Redundanz
+
+        self.sentimente = set()     # Jede Testfunktion setzt voraus dass der E-Mail von außen bereits ermittelte Sentimente übergeben werden können
+        
+        #--------       self.kunde = False - Eine Mail hat keine Kundeneigenschaft
+        #--------       self.status = "" - Eine Mail hat keinen Aktivitätsstatus
+        #--------       self.webid = set() - Eine Mail hat selbst keine direkte Verbindung zu einer WebID
+        
+        self.thematische_zuordnungen = []  # Treffer werden hier hinterlegt - also die Zuordnung von Text zu einem bestimmten Sentiment - die Tupel-Struktur der Schlagwortmethode muss noch generalisiert werden
+        self.referenzen = set()   # Menge zum Speichern von Mailadressen die in der E-Mail erwähnt werden
+
+        self.matches = set()   # Abgleich aus der Mail heraus führen zu Treffer-Objekten die hier gespeichert werden
+
+
+
 
     def satztrenner(self) -> None:
         """
@@ -198,6 +209,27 @@ class Mail:
 
         return dicts_list_of_references    
 
+
+    def add_sentiment(self, sentiment_string):
+        """
+            Übergabe von Sentiment-Werten von außen in die Instanz.
+            Vorbereitung für Operationen, mit denen die accuracy der Einstufungsmethoden geprüft werden soll.
+        """
+
+        if not isinstance(sentiment_string, str):
+            raise TypeError(f"Mail.add_sentiment: Erwartet str, bekommen {type(value).__name__}")
+        else:
+            self.sentimente.add(sentiment_string)
+
+
+    def add_match(self, match_objekt):
+        """
+            Abgleiche von Werten aus der Mail mit externen Quellen.
+            Zusammenfassende Speicherung von Instanzen der diversen möglichen Trefferklassen (aktuell nur für Kontakte umgesetzt).
+
+        """
+    
+        self.matches.add(match_objekt)
 
 
 
