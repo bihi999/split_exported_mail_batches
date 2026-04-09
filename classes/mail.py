@@ -2,6 +2,7 @@ import re
 from typing import List, Tuple, Dict, Any
 import pandas as pd
 import pprint
+from matches import ContactMatch
 
 
 class Mail:
@@ -358,78 +359,125 @@ class DictForMail:
 
         df.to_excel(f"{export_folder}/thematische_zuordnungen.xlsx", index=False)
 
-    def export_mails_to_excel(self, export_path: str, separate_webids: bool = True ) -> None:
+    def export_mails_to_excel(self, export_path: str, separate_webids: bool = True) -> None:
         """
         Exportiert die Mail-Instanzen in separate Excel-Tabellen basierend auf ihren Themen.
 
-        Ermittle alle Themen in den themen - Attributen und erstelle je Thema eine Liste der Mail - Instanzen (Mehrfachnennungen zugelassen?)
-        und sammle alle ohne Thema in einer separaten Liste. Iteriere über das so erstellte Dict und schreibe je Dicteintrag (aka Thema) eine Tabelle.
-
-        
-        :param mails: Dictionary mit Mail-Instanzen
-        :param export_path: Pfad, in den die Excel-Tabellen geschrieben werden sollen
+        Regeln:
+        - Es werden nur Instanzen von ContactMatch aus mail.matches berücksichtigt.
+        - separate_webids=True:
+            - pro unique Kombination aus (webid, kunde, status) eine Zeile
+            - gibt es keine ContactMatch-Instanzen, wird genau eine Zeile mit leeren
+            Feldern für kunde, status und webid erzeugt
+        - separate_webids=False:
+            - pro Mail genau eine Zeile
+            - Spalten 'kunde' und 'status' entfallen
+            - in 'webid' stehen keine, eine oder mehrere WebIDs als kommaseparierte Liste
         """
-        # Alle identifizierten Themen sammeln
         themen_dict = {}
         mails_ohne_thema = []
 
+        # Alle identifizierten Themen sammeln
         for mail in self._items.values():
             if not mail.themen:
                 mails_ohne_thema.append(mail)
+
             for thema in mail.themen:
                 if thema not in themen_dict:
                     themen_dict[thema] = []
                 themen_dict[thema].append(mail)
-        
+
+        def _clean_text(text: str) -> str:
+            return text.replace("\n", " ").replace(",", "").replace(";", "")
+
+        def _get_contact_matches(mail) -> set:
+            """
+            Filtert ausschließlich ContactMatch-Instanzen aus mail.matches.
+            """
+            return {
+                match
+                for match in getattr(mail, "matches", set())
+                if isinstance(match, ContactMatch)
+            }
+
+        def _build_rows_for_mail(mail, separate_webids: bool) -> list[list]:
+            """
+            Erzeugt die Export-Zeilen für genau eine Mail.
+            """
+            text_cleaned = _clean_text(mail.text)
+            contact_matches = _get_contact_matches(mail)
+
+            if separate_webids:
+                # Unique Kombinationen aus (webid, kunde, status)
+                unique_combinations = {
+                    (match.webid, match.kunde, match.status)
+                    for match in contact_matches
+                }
+
+                # Keine Matches -> genau eine Zeile mit leeren Feldern
+                if not unique_combinations:
+                    return [[
+                        mail.absender,
+                        mail.betreff,
+                        text_cleaned,
+                        "",
+                        "",
+                        ""
+                    ]]
+
+                rows = []
+                for webid, kunde, status in sorted(unique_combinations, key=lambda x: str(x[0])):
+                    rows.append([
+                        mail.absender,
+                        mail.betreff,
+                        text_cleaned,
+                        kunde,
+                        status,
+                        webid
+                    ])
+                return rows
+
+            # separate_webids=False:
+            # genau eine Zeile pro Mail, nur mit zusammengefassten WebIDs
+            unique_webids = sorted({match.webid for match in contact_matches}, key=str)
+            webid_str = ", ".join(map(str, unique_webids)) if unique_webids else ""
+
+            return [[
+                mail.absender,
+                mail.betreff,
+                text_cleaned,
+                webid_str
+            ]]
+
         # Für jedes Thema eine separate Excel-Tabelle erstellen
         for thema, mails_list in themen_dict.items():
             data = []
-                    
-            for mail in mails_list:
-                text_cleaned = mail.text.replace('\n', ' ').replace(',', '').replace(';', '')
-                webid_str = ', '.join(map(str, mail.webid)) if mail.webid else ''
-                
-                if mail.webid and separate_webids:
-                    for crm_webid in mail.webid:
-                        data.append([
-                        mail.absender, 
-                        mail.betreff, 
-                        text_cleaned, 
-                        mail.kunde, 
-                        mail.status, 
-                        crm_webid
-                    ])
 
-                else:
-                    data.append([
-                        mail.absender, 
-                        mail.betreff, 
-                        text_cleaned, 
-                        mail.kunde, 
-                        mail.status, 
-                        webid_str
-                    ])
-            
-            df = pd.DataFrame(data, columns=['absender', 'betreff', 'text', 'kunde', 'status', 'webid'])
+            for mail in mails_list:
+                data.extend(_build_rows_for_mail(mail, separate_webids))
+
+            if separate_webids:
+                columns = ['absender', 'betreff', 'text', 'kunde', 'status', 'webid']
+            else:
+                columns = ['absender', 'betreff', 'text', 'webid']
+
+            df = pd.DataFrame(data, columns=columns)
             df.to_excel(f"{export_path}/{thema}.xlsx", index=False)
-        
+
         # Tabelle für Mails ohne Themen erstellen
         if mails_ohne_thema:
             data = []
+
             for mail in mails_ohne_thema:
-                text_cleaned = mail.text.replace('\n', ' ').replace(',', '').replace(';', '')
-                webid_str = ', '.join(map(str, mail.webid)) if mail.webid else ''
-                data.append([
-                    mail.absender, 
-                    mail.betreff, 
-                    text_cleaned, 
-                    mail.kunde, 
-                    mail.status, 
-                    webid_str
-                ])
-            
-            df = pd.DataFrame(data, columns=['absender', 'betreff', 'text', 'kunde', 'status', 'webid'])
-            df.to_excel(f"{export_path}/ohne_thema.xlsx", index=False)    
+                data.extend(_build_rows_for_mail(mail, separate_webids))
+
+            if separate_webids:
+                columns = ['absender', 'betreff', 'text', 'kunde', 'status', 'webid']
+            else:
+                columns = ['absender', 'betreff', 'text', 'webid']
+
+            df = pd.DataFrame(data, columns=columns)
+            df.to_excel(f"{export_path}/ohne_thema.xlsx", index=False)   
 
     def export_references_to_excel(self, export_path: str, show_dataframe: bool = False):
         """
