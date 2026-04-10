@@ -8,6 +8,7 @@ from typing import List, Dict, Set
 from classes import mail
 from classes.csvfile import CSVHandler
 
+
 from korpus import ausgeschieden_korpus01
 
 
