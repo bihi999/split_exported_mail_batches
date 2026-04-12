@@ -2,3 +2,4 @@
 .venv/
 MailBatches/
 falsch_positiv/
+app.log.txt

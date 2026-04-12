@@ -269,20 +269,17 @@ class DictForMail:
         self.absender.add(obj.absender)
 
     @staticmethod
-    def from_raw_data(raw_data: Any, deduplizieren: bool = True) -> "DictForMail":
+    def from_raw_data(raw_data: Any, logger, deduplizieren: bool = True) -> "DictForMail":
         """
         Erstellt ein DictForMail-Objekt aus Rohdaten.
-
         Validiert die Struktur und erzeugt Mail-Instanzen.
 
-        :param raw_data: Liste von 3er-Tupeln/Listen:
-                         [(absender, betreff, text), ...]
+        :param raw_data: Liste von 3er-Tupeln/Listen [(absender, betreff, text), ...]
         :param deduplizieren: Wenn True, wird pro Absender nur eine Mail erzeugt
         :return: Instanz von DictForMail
         :raises ValueError: bei ungültiger Struktur oder ungültiger E-Mail
         """
 
-        # --- Validierung Grundstruktur ---
         if not isinstance(raw_data, list):
             raise ValueError("raw_data muss eine Liste sein")
 
@@ -291,12 +288,15 @@ class DictForMail:
 
         repo = DictForMail(raw_data=raw_data)
 
+        logger.info(f"DictForMail.from_raw_data: Starte Verarbeitung on Liste mit Rohdaten der Länge {len(raw_data)}")
+
+        defect_row_counter = 0
+
         for entry in raw_data:
             if not isinstance(entry, (list, tuple)) or len(entry) != 3:
-                raise ValueError(
-                    "Jeder Eintrag muss ein 3er-Tupel oder Liste sein (absender, betreff, text)"
-                )
-
+                logger.info(f"DictForMail.from_raw_data: Jeder Eintrag muss 3er-Tupel oder Liste sein (absender, betreff, text) - erhalten Typ {type(entry)} mit Länge {len(entry)}")
+                defect_row_counter += 1
+                continue
             absender, betreff, text = entry
 
         #------Generell wie kann Exception-Handling generell besser in Ablauf integriert werden?
@@ -304,11 +304,13 @@ class DictForMail:
 
             # --- Typprüfung ---
             if not all(isinstance(x, str) for x in entry):
+                defect_row_counter += 1
                 #raise ValueError("Alle Elemente müssen Strings sein")
                 continue
 
             # --- Validierung absender (E-Mail-Pattern) ---
             if not email_pattern.search(absender):
+                defect_row_counter += 1
                 #raise ValueError("Ungültige E-Mail-Adresse: {}".format(absender))
                 continue
 
@@ -317,8 +319,14 @@ class DictForMail:
                 continue
 
             # --- Instanziierung ---
-            mail = Mail(absender, betreff, text)
+            try:
+                mail = Mail(absender, betreff, text)
+            except:
+                defect_row_counter += 1
+
             repo.add(mail)
+
+        logger.info(f"DictForMail.from_raw_data: {(defect_row_counter/len(raw_data))*100:.2f} Fehlerquote.")
 
         return repo
 

@@ -4,9 +4,11 @@ import pandas as pd
 import os
 import shutil
 from typing import List, Dict, Set
+import logging
 
 from classes import mail
 from classes.csvfile import CSVHandler
+from classes.matches import ContactMatch, Matcher, DictionaryMatcher
 
 
 from korpus import ausgeschieden_korpus01
@@ -18,6 +20,13 @@ mapping_dataframes = { "abgleich_dwh": {
                                 "webfirmenid": lambda x: pd.to_numeric(x, errors="coerce").astype("Int64"),
                             }
                         }
+
+
+logging.basicConfig(filename = "C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Quadriga Sharepoint\\Teams\\Data Management\\MarketingServices\\10_Birger_Hildenbrandt\\0_POSTEINGANG\\01_PROJEKTE\\SplittingMailBatches\\app.log.txt",
+                    level = logging.INFO,
+                    format = "%(asctime)s - %(levelname)s - %(message)s")
+
+logger = logging.getLogger(__name__)
 
 
 #------Auslagern in die Hilfsfunktionen
@@ -42,8 +51,8 @@ def leere_ordner(pfad):
 
 
 if __name__ == "__main__":
-    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_03042026_18.CSV'  
-    filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_30032026.csv'
+    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_08042026_4306.CSV'  
+    filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_08042026.csv'
     ordnerpfad_einstufungen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle'
     ordnerpfad_einstufungen_tabellen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen'
     ordnerpfad_referenzen = "C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\output.xlsx"
@@ -73,17 +82,19 @@ if __name__ == "__main__":
         csv_dwh_handler = CSVHandler.from_file(filepath_dwh_ergebnisse)
         df_dwh_results = csv_dwh_handler.csv_to_pandas(",")
         if not isinstance(df_dwh_results, pd.DataFrame):
-            print("CSV ließt sich nicht als DataFrame einlesen: {}".format(df_dwh_results))
+            print("CSV ließ sich nicht als DataFrame einlesen: {}".format(df_dwh_results))
         else:
             df_dwh_results = csv_dwh_handler.transform_pandas(df_dwh_results, mapping_dataframes, "abgleich_dwh")
             if not isinstance(df_dwh_results, pd.DataFrame):
                 print("Erstellter DataFrame ließ sich nicht korrekt transformieren: {}".format(df_dwh_results))
 
 
+
 #----------------------------------Neuer Ablauf Split-and-Rule
 
     splitted_mails, report_splitting = csv_mail_handler.split_content([r'"\n"', r'","'])
     print(report_splitting)
+    print(splitted_mails[1])
 
     #-----Ausgabe zur Kontrolle ersetzen - Report liefert die Info: Wurde erwartete Anzahl von Daten eingelesen und ist Anzahl auf Level 2 wie erwartet ein Vielfaches von 3 (Elementen)
     #for mail_entry in splitted_mails:
@@ -95,12 +106,22 @@ if __name__ == "__main__":
         #    for field in mail_entry:
         #        print(field[:10])
             
-    mail_dict = mail.DictForMail.from_raw_data(splitted_mails)
+    mail_dict = mail.DictForMail.from_raw_data(splitted_mails, logger)
     
     for absender, mailinstanz in mail_dict._items.items():
         mailinstanz.satztrenner()
         mailinstanz.themen_ermitteln_schlagworte(ausgeschieden_korpus01.themen_schlagworte)
-        
+
+
+    def abgleich_mails(mails_dict, matcher: Matcher):
+        """
+        Führt den Abgleich über die Strategy aus.
+        """
+
+        for mail in mails_dict.values():
+            matches = matcher.find(mail.absender)
+            mail.apply_matches(matches)
+
     
     mail_dict.print_thematische_zuordnungen()
     mail_dict.export_thematische_zuordnungen_to_excel(ordnerpfad_einstufungen)
