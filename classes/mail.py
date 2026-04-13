@@ -288,45 +288,61 @@ class DictForMail:
 
         repo = DictForMail(raw_data=raw_data)
 
+        logger.info(f"................................................................................................")
         logger.info(f"DictForMail.from_raw_data: Starte Verarbeitung on Liste mit Rohdaten der Länge {len(raw_data)}")
 
-        defect_row_counter = 0
+        defect_row_counter = {"KeineListe" : 0,
+                              "NichtAlleStrings" : 0,
+                              "KeineEMailAdresse" : 0,
+                              "InstanziierungFehlgeschlagen" : 0} # Keine Liste, Nicht alles Strings, absender keine E-Mail-Adresse, Instanziierung geht fehl
+
+        deduplicated_e_mails = { "counter" : 0}
 
         for entry in raw_data:
             if not isinstance(entry, (list, tuple)) or len(entry) != 3:
                 logger.info(f"DictForMail.from_raw_data: Jeder Eintrag muss 3er-Tupel oder Liste sein (absender, betreff, text) - erhalten Typ {type(entry)} mit Länge {len(entry)}")
-                defect_row_counter += 1
+                defect_row_counter["KeineListe"] += 1
                 continue
             absender, betreff, text = entry
 
-        #------Generell wie kann Exception-Handling generell besser in Ablauf integriert werden?
-        #------Auch hier als Attribut verfügbar machen und die Exceptions sammeln
-
             # --- Typprüfung ---
             if not all(isinstance(x, str) for x in entry):
-                defect_row_counter += 1
-                #raise ValueError("Alle Elemente müssen Strings sein")
+                defect_row_counter['NichtAlleStrings'] += 1
+                logger.info(f"DictForMail.from_raw_data: Nicht jeder Eintrag in Liste / Tupel ist ein String.")
                 continue
 
             # --- Validierung absender (E-Mail-Pattern) ---
             if not email_pattern.search(absender):
-                defect_row_counter += 1
-                #raise ValueError("Ungültige E-Mail-Adresse: {}".format(absender))
+                defect_row_counter['KeineEMailAdresse'] += 1
+                logger.info(f"DictForMail.from_raw_data: Ausgelesener absender entspricht nicht dem Mail-Pattern.")
                 continue
 
             # --- Deduplizierung ---
             if deduplizieren and absender in repo.absender:
+                deduplicated_e_mails["counter"] += 1
+                if absender in deduplicated_e_mails.keys():
+                    deduplicated_e_mails[absender] += 1
+                else:
+                    deduplicated_e_mails[absender] = 1
                 continue
 
             # --- Instanziierung ---
             try:
                 mail = Mail(absender, betreff, text)
             except:
-                defect_row_counter += 1
+                defect_row_counter["InstanziierungFehlgeschlagen"] += 1
+                logger.info(f"DictForMail.from_raw_data: Instanziierung von Mail-Objekt aus Tupel fehlgeschlagen")
 
             repo.add(mail)
 
-        logger.info(f"DictForMail.from_raw_data: {(defect_row_counter/len(raw_data))*100:.2f} Fehlerquote.")
+        
+        if deduplizieren:
+            logger.info(f"DictForMail.from_raw_data: Deduplizieren aktiv. Für {len(deduplicated_e_mails)} - Adressen wurden {deduplicated_e_mails['counter']} E-Mails ausgeschlossen.")
+        frd_counter1 = 0
+        for key in defect_row_counter.keys():
+            logger.info(f"DictForMail.from_raw_data: Für {defect_row_counter[key]} - Fälle den Fehler {key} erhalten.")
+            frd_counter1 += defect_row_counter[key]
+        logger.info(f"DictForMail.from_raw_data: {(frd_counter1/len(raw_data))*100:.2f} Fehlerquote.")
 
         return repo
 
