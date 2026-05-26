@@ -106,9 +106,9 @@ if __name__ == "__main__":
         #    for field in mail_entry:
         #        print(field[:10])
             
-    mail_dict = mail.DictForMail.from_raw_data(splitted_mails, logger, deduplizieren = False)
+    mail_dict = mail.DictForMail.from_raw_data(splitted_mails, logger)
     
-    for absender, mailinstanz in mail_dict._items.items():
+    for mailinstanz in mail_dict._items.values():
         mailinstanz.satztrenner()
         mailinstanz.themen_ermitteln_schlagworte(ausgeschieden_korpus01.themen_schlagworte)
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     mail_dict.export_mails_to_excel(ordnerpfad_einstufungen_tabellen)
 
 
-    for absender, mailinstanz in mail_dict._items.items():
+    for mailinstanz in mail_dict._items.values():
         mailinstanz.referenzen_ermitteln()
 
     mail_dict.export_references_to_excel(ordnerpfad_referenzen, show_dataframe=True)

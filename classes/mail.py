@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, ClassVar
 import pandas as pd
 import pprint
 from dataclasses import is_dataclass, fields
@@ -9,6 +9,8 @@ class Mail:
     """
     Repräsentiert eine E-Mail mit Absender, Betreff und Text.
     """
+    _next_id: ClassVar[int] = 1
+
     def __init__(self, absender: str, betreff: str, text: str):
         """
         Initialisiert eine Mail-Instanz.
@@ -17,6 +19,9 @@ class Mail:
         :param betreff: Betreff der E-Mail
         :param text: Text der E-Mail
         """
+        self.id = Mail._next_id
+        Mail._next_id += 1
+
         self.absender = absender
         self.betreff = betreff
         self.text = text
@@ -35,6 +40,22 @@ class Mail:
         self.referenzen = set()   # Menge zum Speichern von Mailadressen die in der E-Mail erwähnt werden
 
         self.matches = set()   # Abgleich aus der Mail heraus führen zu Treffer-Objekten die hier gespeichert werden
+
+    def _deduplizierungs_key(self) -> tuple[str, str, str]:
+        return (
+            self.absender.strip().casefold(),
+            self.betreff.strip(),
+            self.text.strip()
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Mail):
+            return NotImplemented
+
+        return self._deduplizierungs_key() == other._deduplizierungs_key()
+
+    def __hash__(self) -> int:
+        return hash(self._deduplizierungs_key())
 
 
 
@@ -238,8 +259,8 @@ class DictForMail:
     Repository-Klasse für Mail-Objekte.
 
     Attribute:
-        _items (Dict[str, Mail]):
-            Dictionary mit Absender als Schlüssel und Mail-Instanzen als Werte.
+        _items (Dict[int, Mail]):
+            Dictionary mit Mail-ID als Schlüssel und Mail-Instanzen als Werte.
 
         raw_data (List[Tuple[str, str, str]]):
             Liste von Tupeln/Listen (absender, betreff, text)
@@ -254,27 +275,26 @@ class DictForMail:
 
         :param raw_data: Liste von 3er-Tupeln (absender, betreff, text)
         """
-        self._items: Dict[str, Mail] = {}
+        self._items: Dict[int, Mail] = {}
         self.raw_data = raw_data or []
         self.absender: set[str] = set()
 
     def add(self, obj: Mail) -> None:
         """
-        Fügt eine Mail-Instanz hinzu (Key = absender).
+        Fügt eine Mail-Instanz hinzu (Key = Mail-ID).
 
         :param obj: Mail-Objekt
         """
-        self._items[obj.absender] = obj
+        self._items[obj.id] = obj
         self.absender.add(obj.absender)
 
     @staticmethod
-    def from_raw_data(raw_data: Any, logger, deduplizieren: bool = True) -> "DictForMail":
+    def from_raw_data(raw_data: Any, logger) -> "DictForMail":
         """
         Erstellt ein DictForMail-Objekt aus Rohdaten.
         Validiert die Struktur und erzeugt Mail-Instanzen.
 
         :param raw_data: Liste von 3er-Tupeln/Listen [(absender, betreff, text), ...]
-        :param deduplizieren: Wenn True, wird pro Absender nur eine Mail erzeugt
         :return: Instanz von DictForMail
         :raises ValueError: bei ungültiger Struktur oder ungültiger E-Mail
         """
@@ -295,8 +315,6 @@ class DictForMail:
                               "KeineEMailAdresse" : 0,
                               "InstanziierungFehlgeschlagen" : 0} # Keine Liste, Nicht alles Strings, absender keine E-Mail-Adresse, Instanziierung geht fehl
 
-        deduplicated_e_mails = { "counter" : 0}
-
         for entry in raw_data:
             if not isinstance(entry, (list, tuple)) or len(entry) != 3:
                 logger.info(f"DictForMail.from_raw_data: Jeder Eintrag muss 3er-Tupel oder Liste sein (absender, betreff, text) - erhalten Typ {type(entry)} mit Länge {len(entry)}")
@@ -316,27 +334,16 @@ class DictForMail:
                 logger.info(f"DictForMail.from_raw_data: Ausgelesener absender entspricht nicht dem Mail-Pattern.")
                 continue
 
-            # --- Deduplizierung ---
-            if deduplizieren and absender in repo.absender:
-                deduplicated_e_mails["counter"] += 1
-                if absender in deduplicated_e_mails.keys():
-                    deduplicated_e_mails[absender] += 1
-                else:
-                    deduplicated_e_mails[absender] = 1
-                continue
-
             # --- Instanziierung ---
             try:
                 mail = Mail(absender, betreff, text)
             except:
                 defect_row_counter["InstanziierungFehlgeschlagen"] += 1
                 logger.info(f"DictForMail.from_raw_data: Instanziierung von Mail-Objekt aus Tupel fehlgeschlagen")
+                continue
 
             repo.add(mail)
 
-        
-        if deduplizieren:
-            logger.info(f"DictForMail.from_raw_data: Deduplizieren aktiv. Für {len(deduplicated_e_mails)} - Adressen wurden {deduplicated_e_mails['counter']} E-Mails ausgeschlossen.")
         frd_counter1 = 0
         for key in defect_row_counter.keys():
             logger.info(f"DictForMail.from_raw_data: Für {defect_row_counter[key]} - Fälle den Fehler {key} erhalten.")
@@ -345,12 +352,31 @@ class DictForMail:
 
         return repo
 
+    def deduplizieren(self) -> "DictForMail":
+        """
+        Erstellt eine neue DictForMail-Instanz ohne fachlich doppelte Mail-Objekte.
+
+        Die Gleichheit der Mail-Objekte wird über Mail.__eq__ und Mail.__hash__
+        definiert.
+        """
+        repo = DictForMail(raw_data=self.raw_data)
+        bekannte_mails: set[Mail] = set()
+
+        for mail in self._items.values():
+            if mail in bekannte_mails:
+                continue
+
+            bekannte_mails.add(mail)
+            repo.add(mail)
+
+        return repo
+
     def print_thematische_zuordnungen(self) -> None:
         """
         Gibt alle thematischen Zuordnungen aller Mails aus.
         """
-        for absender, mail in self._items.items():
-            print(f"Absender: {absender}, Betreff: {mail.betreff}")
+        for mail in self._items.values():
+            print(f"Absender: {mail.absender}, Betreff: {mail.betreff}")
             for thema, schlagwortliste, satz in mail.thematische_zuordnungen:
                 print(f"Thema: {thema}")
                 print(f"Schlagworte: {', '.join(schlagwortliste)}")
@@ -366,10 +392,10 @@ class DictForMail:
         """
         data = []
 
-        for absender, mail in self._items.items():
+        for mail in self._items.values():
             for thema, schlagwortliste, satz in mail.thematische_zuordnungen:
                 data.append([
-                    absender,
+                    mail.absender,
                     thema,
                     " ".join(schlagwortliste),
                     satz.replace('\n', ' ').replace('\r', '').replace('\t', '')
