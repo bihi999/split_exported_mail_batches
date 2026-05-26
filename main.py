@@ -51,7 +51,7 @@ def leere_ordner(pfad):
 
 
 if __name__ == "__main__":
-    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_08042026_4306.CSV'  
+    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-479_Hardbouncer_195.CSV'  
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_08042026.csv'
     ordnerpfad_einstufungen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle'
     ordnerpfad_einstufungen_tabellen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen'
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 #----------------h_ Sehr aufwendige Umsetzung - Zusammenfassung
 #----------------h_ Exception-Handling unbefriedigend - sauber über Klassenattribut .exceptions handhaben und vereinheitlichen
 
-    result = CSVHandler.validate_file(filepath_mails)
+    result = CSVHandler.validate_file(filepath_mails, logger)
     if not result.is_valid:
         print("Fehler Dateipfad Mailexport:", result.errors)
     else:
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         print(len(csv_mail_handler.content))
 
     
-    result = CSVHandler.validate_file(filepath_dwh_ergebnisse)
+    result = CSVHandler.validate_file(filepath_dwh_ergebnisse, logger)
     if not result.is_valid:
         print("Fehler Dateipfad DWH_Ergebnisse:", result.errors)
     else:
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         #    for field in mail_entry:
         #        print(field[:10])
             
-    mail_dict = mail.DictForMail.from_raw_data(splitted_mails, logger)
+    mail_dict = mail.DictForMail.from_raw_data(splitted_mails, logger, deduplizieren = False)
     
     for absender, mailinstanz in mail_dict._items.items():
         mailinstanz.satztrenner()

@@ -3,3 +3,5 @@
 MailBatches/
 falsch_positiv/
 app.log.txt
+__pycache__/
+*.pyc

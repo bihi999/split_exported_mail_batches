@@ -21,7 +21,7 @@ class CSVHandler:
         self.exceptions = set() # neues Attribut
 
     @staticmethod
-    def validate_file(filepath: str, expected_encoding: str = "utf-8") -> ValidationResult:
+    def validate_file(filepath: str, logger, expected_encoding: str = "utf-8") -> ValidationResult:
         errors = []
 
         dir_path = os.path.dirname(filepath) or "."
