@@ -25,8 +25,6 @@ class Mail:
         
         #--------       self.deutsche_saetze = [] - Logik unklar - Redundanz und zugleich Nutzen unklar.
         
-        self.themen = []  # Wird gleichsinnig zu thematische_zuordnungen befüllt - Wieder: Redundanz
-
         self.sentimente = set()     # Jede Testfunktion setzt voraus dass der E-Mail von außen bereits ermittelte Sentimente übergeben werden können
         
         #--------       self.kunde = False - Eine Mail hat keine Kundeneigenschaft
@@ -86,22 +84,23 @@ class Mail:
 
     def themen_ermitteln_schlagworte(self, themen_schlagworte: dict[str, list[list[str]]], verbose: bool = False) -> None:
         """
-        Ermittelt Themen basierend auf Schlagworten und fügt sie dem Attribut 'themen' hinzu.
+        Ermittelt Themen basierend auf Schlagworten und fügt Treffer den thematischen Zuordnungen hinzu.
         
         :param themen_schlagworte: Dictionary mit Themen und zugehörigen Schlagwortlisten
         :param verbose: Boolescher Wert, der angibt, ob alle Treffer gefunden werden sollen (True) oder ob nach dem ersten Treffer abgebrochen werden soll (False)
         """
         for thema, schlagwortlisten in themen_schlagworte.items():
             if self.saetze:
+                thema_gefunden = False
                 for satz in self.saetze:
                     satz_lower = satz.lower()
                     for schlagwortliste in schlagwortlisten:
                         if all(wort in satz_lower for wort in schlagwortliste):
-                            self.themen.append(thema)
                             self.thematische_zuordnungen.append((thema, schlagwortliste, satz))
+                            thema_gefunden = True
                             if not verbose:
                                 break
-                    if not verbose and thema in self.themen:
+                    if not verbose and thema_gefunden:
                         break
             else:
                 print("Mail.themen_ermitteln_schlagworte: self.saetze enthalten keinen Inhalt.")
@@ -396,12 +395,14 @@ class DictForMail:
         themen_dict = {}
         mails_ohne_thema = []
 
-        # Themen sammeln
+        # Themen werden aus thematische_zuordnungen abgeleitet.
         for mail in self._items.values():
-            if not mail.themen:
+            themen = [thema for thema, _, _ in mail.thematische_zuordnungen]
+
+            if not themen:
                 mails_ohne_thema.append(mail)
 
-            for thema in mail.themen:
+            for thema in themen:
                 if thema not in themen_dict:
                     themen_dict[thema] = []
                 themen_dict[thema].append(mail)
