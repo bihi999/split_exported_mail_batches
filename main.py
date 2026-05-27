@@ -132,7 +132,7 @@ if __name__ == "__main__":
     for mailinstanz in mail_dict._items.values():
         mailinstanz.referenzen_ermitteln()
 
-    mail_dict.export_references_to_excel(ordnerpfad_referenzen, show_dataframe=True)
+    mail_dict.export_references_to_excel(ordnerpfad_referenzen, logger, show_dataframe=True)
         
 
 

@@ -57,9 +57,6 @@ class Mail:
     def __hash__(self) -> int:
         return hash(self._deduplizierungs_key())
 
-
-
-
     def satztrenner(self) -> None:
         """
         Trennt das Attribut 'text' in Sätze auf und speichert sie in der Liste 'saetze'.
@@ -101,7 +98,6 @@ class Mail:
             'kann', 'schon', 'mehr', 'jetzt', 'nach', 'wieder'
         }
         return any(wort in satz.lower().split() for wort in deutsche_woerter)
-    
 
     def themen_ermitteln_schlagworte(self, themen_schlagworte: dict[str, list[list[str]]], verbose: bool = False) -> None:
         """
@@ -125,7 +121,6 @@ class Mail:
                         break
             else:
                 print("Mail.themen_ermitteln_schlagworte: self.saetze enthalten keinen Inhalt.")
-
     
     def satztrenner(self) -> None:
         """
@@ -175,11 +170,6 @@ class Mail:
         """
         Extrahiert E-Mail-Adressen aus self.text.
 
-        Erkennt u.a.:
-        - normale Adressen
-        - mailto: Links
-        - Adressen in <>, (), [], {}
-        - Adressen mit nachgestellten Satzzeichen
         """
 
         if pattern is None:
@@ -509,7 +499,7 @@ class DictForMail:
         if mails_ohne_thema:
             _export_block(mails_ohne_thema, "ohne_thema")   
 
-    def export_references_to_excel(self, export_path: str, show_dataframe: bool = False):
+    def export_references_to_excel(self, export_path: str, logger, show_dataframe: bool = False):
         """
             Erstelle eine leere Liste.
             Iteriere über die Mail-Instanzen in self._items und calle referenzen_umgebung_ausgeben.
@@ -518,13 +508,18 @@ class DictForMail:
             Schreibe ihn via .to_excel in den export_path.
         """
         
+        logger.info(f"export_references_to_excel: Start Zusammenfassung der Referenzen und der Umgebung.")
+        counter_keine_referenzen = 0
+
         liste_ermittelter_referenzen = []
         for mail in self._items.values():
             if mail.referenzen:
-                liste_ermittelter_referenzen.extend(mail.referenzen_umgebung_ausgeben())
+                liste_ermittelter_referenzen.extend(mail.referenzen_umgebung_ausgeben()) # Reminder: Einzelelemente werden hinzugefügt.
             else:
-                print("DictForMail.export_references_to_excel: Mail-Instanz enthält keine Referenzen.")
-        
+                counter_keine_referenzen += 1
+
+        logger.info(f"export_references_to_excel: {len(self._items)} Mail-Instanzen - {counter_keine_referenzen} ohne Referenzen - {len(liste_ermittelter_referenzen)} unique Referenzen.")
+
         referenzen_dict_gekuerzt = pd.DataFrame(liste_ermittelter_referenzen)
         if show_dataframe:
             print(referenzen_dict_gekuerzt.head())
