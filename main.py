@@ -179,7 +179,7 @@ if __name__ == "__main__":
         
         for mail in mails_dict.values():
             mail.referenzen_ermitteln()
-            referenzen_liste_gekuerzt.extend(mail.referenzen_umgebung_ausgeben(context_len=80))
+            referenzen_liste_gekuerzt.extend(mail.referenzen_umgebung_ausgeben(logger, context_len=80))
 
         referenzen_liste = []
         

@@ -279,10 +279,10 @@ class DictForMail:
         liste_ermittelter_referenzen = []
         for mail in self._items.values():
             if mail.referenzen:
-                ermittelte_referenzen = mail.referenzen_umgebung_ausgeben()
-                if len(ermittelte_referenzen) == 0:
+                ermittelte_referenzen = mail.referenzen_umgebung_ausgeben(logger)
+                if any(referenz.get("text") is None for referenz in ermittelte_referenzen):
                     counter_verlorene_referenzen += 1
-                elif len(ermittelte_referenzen) > 0 and len(ermittelte_referenzen) < len(mail.referenzen):
+                elif len(ermittelte_referenzen) < len(mail.referenzen):
                     counter_verlorene_referenzen += 1
                 
                 liste_ermittelter_referenzen.extend(ermittelte_referenzen) # Reminder: Einzelelemente werden hinzugefügt. Keine Deduplizierung.

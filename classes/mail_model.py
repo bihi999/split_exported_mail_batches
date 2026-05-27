@@ -168,14 +168,23 @@ class Mail:
         else:
             self.referenzen = set(treffer)
 
-    def referenzen_umgebung_ausgeben(self, context_len=80):
+    def referenzen_umgebung_ausgeben(self, logger, context_len=80):
         dicts_list_of_references = []
 
         for referenz in self.referenzen:
             match_mail = re.search(re.escape(referenz), self.text)
 
             if not match_mail:
-                continue  # optional: robust machen
+                logger.info(
+                    "Mail.referenzen_umgebung_ausgeben: Referenz "
+                    f"{referenz} konnte in Mail-ID {self.id} nicht im Text gefunden werden."
+                )
+                dicts_list_of_references.append({
+                    "absender": self.absender,
+                    "referenz": referenz,
+                    "text": None
+                })
+                continue
 
             beginn_mail = match_mail.start()
             end_mail = match_mail.end()

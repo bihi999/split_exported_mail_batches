@@ -2,6 +2,12 @@ import pytest
 
 from classes.mail import Mail
 
+
+class DummyLogger:
+    def info(self, message):
+        pass
+
+
 TEST_CASES = [
     {
         "name": "keine referenzen",
@@ -45,6 +51,12 @@ TEST_CASES = [
         "referenzen": {"a@test.de"},
         "context_len": 100,
     },
+    {
+        "name": "referenz nicht im text",
+        "text": "Hallo Welt ohne die manuell gesetzte Referenz",
+        "referenzen": {"missing@test.de"},
+        "context_len": 5,
+    },
 ]
 
 
@@ -57,7 +69,7 @@ def test_mail_export(case):
         )
 
     mail.referenzen=case["referenzen"]
-    result = mail.referenzen_umgebung_ausgeben(context_len=case["context_len"])
+    result = mail.referenzen_umgebung_ausgeben(DummyLogger(), context_len=case["context_len"])
 
     text = case["text"]
     referenzen = case["referenzen"]
@@ -75,6 +87,10 @@ def test_mail_export(case):
     for entry in result:
         ref = entry["referenz"]
         snippet = entry["text"]
+
+        if ref not in text:
+            assert snippet is None
+            continue
 
         # Referenz muss enthalten sein
         assert ref in snippet
