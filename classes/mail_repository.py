@@ -267,19 +267,30 @@ class DictForMail:
             Sammle die in Listen organisierten Dictionaries in der erzeugten Liste.
             Erzeuge daraus einen Data Frame.
             Schreibe ihn via .to_excel in den export_path.
+
+            Args:   counter_keine_referenzen (int) - Zähler wieviele Mail - Instanzen keine Referenzen enthalten
+                    counter_verlorene_referenzen (int) - Zähler wieviele Mail -Instanzen Referenzen haben Referenzen aber sie unvollständig oder gar nicht zurückgeben
         """
 
-        logger.info(f"export_references_to_excel: Start Zusammenfassung der Referenzen und der Umgebung.")
+        logger.info(f"export_references_to_excel: Start Zusammenfassung der Referenzen und ihrer Fundstellen.")
         counter_keine_referenzen = 0
-
+        counter_verlorene_referenzen = 0
+        
         liste_ermittelter_referenzen = []
         for mail in self._items.values():
             if mail.referenzen:
-                liste_ermittelter_referenzen.extend(mail.referenzen_umgebung_ausgeben()) # Reminder: Einzelelemente werden hinzugefügt.
+                ermittelte_referenzen = mail.referenzen_umgebung_ausgeben()
+                if len(ermittelte_referenzen) == 0:
+                    counter_verlorene_referenzen += 1
+                elif len(ermittelte_referenzen) > 0 and len(ermittelte_referenzen) < len(mail.referenzen):
+                    counter_verlorene_referenzen += 1
+                
+                liste_ermittelter_referenzen.extend(ermittelte_referenzen) # Reminder: Einzelelemente werden hinzugefügt. Keine Deduplizierung.
+            
             else:
                 counter_keine_referenzen += 1
 
-        logger.info(f"export_references_to_excel: {len(self._items)} Mail-Instanzen - {counter_keine_referenzen} ohne Referenzen - {len(liste_ermittelter_referenzen)} unique Referenzen.")
+        logger.info(f"export_references_to_excel: {len(self._items)} Mail-Instanzen - {counter_keine_referenzen} ohne Referenzen - {counter_verlorene_referenzen} verlorene Referenzen - {len(liste_ermittelter_referenzen)} unique Referenzen.")
 
         referenzen_dict_gekuerzt = pd.DataFrame(liste_ermittelter_referenzen)
         if show_dataframe:
