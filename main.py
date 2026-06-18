@@ -29,6 +29,19 @@ logging.basicConfig(filename = "C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadri
 logger = logging.getLogger(__name__)
 
 
+def raise_for_invalid_csv_file(filepath: str, result, label: str) -> None:
+    """
+    Bricht die Verarbeitung mit einer eindeutigen Exception ab,
+    wenn die Dateivalidierung fehlgeschlagen ist.
+    """
+    message = f"{label}: Ungültiger Dateipfad '{filepath}'. Fehler: {', '.join(result.errors)}"
+
+    if "FILE_NOT_FOUND" in result.errors:
+        raise FileNotFoundError(message)
+
+    raise ValueError(message)
+
+
 #------Auslagern in die Hilfsfunktionen
 def leere_ordner(pfad):
     # Überprüfe, ob der Pfad tatsächlich existiert und ein Verzeichnis ist
@@ -51,7 +64,7 @@ def leere_ordner(pfad):
 
 
 if __name__ == "__main__":
-    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_29042026_5243.CSV'  
+    filepath_mails = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dage-358_18062026_1645.CSV'  
     filepath_dwh_ergebnisse = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\dwh_abgleich_29042026.csv'
     ordnerpfad_einstufungen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen_kontrolltabelle'
     ordnerpfad_einstufungen_tabellen = 'C:\\Users\\BirgerHildenbrandt\\OneDrive - Quadriga Hochschule Berlin GmbH\\Desktop\\chatgpt_skripte\\DAGE-358\\thematische_zuordnungen'
@@ -70,7 +83,7 @@ if __name__ == "__main__":
 
     result = CSVHandler.validate_file(filepath_mails, logger)
     if not result.is_valid:
-        print("Fehler Dateipfad Mailexport:", result.errors)
+        raise_for_invalid_csv_file(filepath_mails, result, "Mailexport")
     else:
         csv_mail_handler = CSVHandler.from_file(filepath_mails)
         print(len(csv_mail_handler.content))
@@ -78,7 +91,7 @@ if __name__ == "__main__":
     
     result = CSVHandler.validate_file(filepath_dwh_ergebnisse, logger)
     if not result.is_valid:
-        print("Fehler Dateipfad DWH_Ergebnisse:", result.errors)
+        raise_for_invalid_csv_file(filepath_dwh_ergebnisse, result, "DWH-Ergebnisse")
     else:
         csv_dwh_handler = CSVHandler.from_file(filepath_dwh_ergebnisse)
         df_dwh_results = csv_dwh_handler.csv_to_pandas(",")
