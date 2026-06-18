@@ -1,0 +1,24 @@
+@startuml
+
+class Kunde {
+    +kundenNr : int
+    +name : String
+    +bestellen()
+}
+
+class Bestellung {
+    +bestellNr : int
+    +datum : Date
+    +berechneSumme()
+}
+
+class Artikel {
+    +artikelNr : int
+    +bezeichnung : String
+    +preis : decimal
+}
+
+Kunde "1" --> "*" Bestellung : erstellt
+Bestellung "*" --> "*" Artikel : enthält
+
+@enduml

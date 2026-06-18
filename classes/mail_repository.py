@@ -160,6 +160,54 @@ class DictForMail:
 
         df.to_excel(f"{export_folder}/thematische_zuordnungen.xlsx", index=False)
 
+    def export_raw_mails_to_excel(self, export_path: str, logger, deduplicate_mode = "none") -> None:
+        """
+            Export aller Mailinstanzen mit ihren Attributen in eine Exceltabelle.
+            Mails können nach Absender und Textinhalt dedupliziert werden.
+            Umsetzung durch variablen Dict-Schlüssel je nach gewünschter Deduplizierungs-Art.
+
+        """
+        import uuid #Universally Unique Identifier
+        from pathlib import Path
+        
+        export_dict = {}
+
+        def make_key(mail_sender, mail_text, deduplicate_mode):
+            if deduplicate_mode == "none":
+                return uuid.uuid4()
+            elif deduplicate_mode == "sender":
+                return mail_sender
+            elif deduplicate_mode == "sender_text":
+                return (mail_sender, mail_text)
+            else:
+                raise ValueError(f"Dict.ForMail.export_raw_mails_to_excel: Unbekannter Wert für deduplicate_mode: {deduplicate_mode}")
+        
+    
+        for item in self._items.values():
+            sender = item.absender
+            text = item.text
+            topic = item.betreff
+            dict_key = make_key(sender, text, deduplicate_mode)
+
+            if dict_key in export_dict.keys():
+                continue
+            else:
+                export_dict[dict_key] = { "absender" : sender,
+                                          "betreff" : topic,
+                                          "text" : text}
+        
+        df = pd.DataFrame.from_dict(export_dict, orient="index")
+        
+        ordner = export_path
+        file = "rohdaten"
+        suffix = deduplicate_mode
+        
+        export_path_completed = Path(ordner) / f"{file}{suffix}.xlsx"
+        
+        df.to_excel(export_path_completed, index=False)
+    
+    
+    
     def export_mails_to_excel(self, export_path: str) -> None:
         """
         Generischer Export:
