@@ -1,0 +1,93 @@
+@startuml uml_overview
+
+left to right direction
+skinparam classAttributeIconSize 0
+
+class Mail {
+  +{static} _next_id : ClassVar<int>
+  +id : int
+  +absender : str
+  +betreff : str
+  +text : str
+  +saetze : list
+  +sentimente : set
+  +thematische_zuordnungen : list
+  +referenzen : set
+  +matches : set
+  +{static} DEFAULT_EMAIL_PATTERN : Pattern
+  +__init__(absender: str, betreff: str, text: str)
+  -_deduplizierungs_key() : tuple
+  +satztrenner() : None
+  +is_probably_german(satz: str) : bool
+  +themen_ermitteln_schlagworte(themen_schlagworte: dict, verbose: bool) : None
+  +referenzen_ermitteln(pattern=None, normalisiere_kleinschreibung=True)
+  +referenzen_umgebung_ausgeben(logger, context_len=80) : list
+  +add_sentiment(sentiment_string)
+  +add_match(match_objekt)
+}
+
+class DictForMail {
+  -_items : Dict<int, Mail>
+  +raw_data : list
+  +absender : set<str>
+  +__init__(raw_data: list = None)
+  +add(obj: Mail) : None
+  +from_raw_data(raw_data: Any, logger) : DictForMail
+  +deduplizieren() : DictForMail
+  +print_thematische_zuordnungen() : None
+  +export_thematische_zuordnungen_to_excel(export_folder: str) : None
+  +export_raw_mails_to_excel(export_path: str, logger, deduplicate_mode="none") : None
+  +export_mails_to_excel(export_path: str) : None
+  +export_references_to_excel(export_path: str, logger, show_dataframe: bool)
+  +{static} BuildIterableForStrings(limit_sentence_count: int, limit_sentence_length: int, sentences: list, logger=None) : dict
+  +DisplayAndChooseSentence(logger=None, limit_sentence_count=5, limit_sentence_length=23)
+}
+
+class ValidationResult <<dataclass>> {
+  +is_valid : bool
+  +errors : List<str>
+}
+
+class CSVHandler {
+  +filepath : str
+  +encoding : str
+  +content : str
+  +exceptions : set
+  +__init__(filepath: str, encoding: str, content: str)
+  +validate_file(filepath: str, logger, expected_encoding: str) : ValidationResult
+  +from_file(filepath: str, encoding: str) : CSVHandler
+  +csv_to_pandas(sep) : DataFrame
+  +transform_pandas(df, mapping: dict, use_case: str) : DataFrame
+  +split_content(separators: list<str>) : tuple
+}
+
+class ContactMatch <<dataclass>> {
+  +kunde : Optional<bool>
+  +status : str
+  +webid : str
+  +source : str
+  +__post_init__()
+  -_validate_kunde(value) : Optional<bool>
+  -_validate_webid(value) : str
+}
+
+abstract class Matcher {
+  +{abstract} find(absender: str) : List<ContactMatch>
+}
+
+class DictionaryMatcher {
+  +dwh_dict : dict
+  +__init__(dwh_dict)
+  +find(absender: str) : List<ContactMatch>
+}
+
+DictForMail "1" o-- "*" Mail : verwaltet
+Mail "1" o-- "*" ContactMatch : matches
+CSVHandler ..> ValidationResult : validiert als
+DictForMail ..> CSVHandler : nutzt Rohdaten aus
+DictForMail ..> Mail : erzeugt
+DictionaryMatcher --|> Matcher
+Matcher ..> ContactMatch : liefert
+DictionaryMatcher ..> ContactMatch : erzeugt
+
+@enduml

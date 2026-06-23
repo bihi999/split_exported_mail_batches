@@ -1,0 +1,48 @@
+classDiagram
+    direction TB
+
+    class CSVHandler {
+        +validate_file(...)
+        +from_file(...)
+        +csv_to_pandas(...)
+        +transform_pandas(...)
+        +split_content(...)
+    }
+
+    class DictForMail {
+        +from_raw_data(...)
+        +deduplizieren()
+        +export_thematische_zuordnungen_to_excel(...)
+        +export_mails_to_excel(...)
+        +export_references_to_excel(...)
+    }
+
+    class Mail {
+        +satztrenner()
+        +themen_ermitteln_schlagworte(...)
+        +referenzen_ermitteln(...)
+        +add_match(...)
+    }
+
+    class Matcher {
+        <<abstract>>
+        +find(absender: str)
+    }
+
+    class DictionaryMatcher {
+        +find(absender: str)
+    }
+
+    class ContactMatch {
+        +kunde
+        +status
+        +webid
+        +source
+    }
+
+    CSVHandler ..> DictForMail : liefert gesplittete Rohdaten
+    DictForMail "1" o-- "*" Mail : erzeugt und speichert
+    Mail ..> Matcher : Abgleich ueber absender
+    DictionaryMatcher --|> Matcher
+    DictionaryMatcher ..> ContactMatch : Ergebnis
+    Mail "1" o-- "*" ContactMatch : speichert

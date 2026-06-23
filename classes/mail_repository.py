@@ -344,3 +344,50 @@ class DictForMail:
         if show_dataframe:
             print(referenzen_dict_gekuerzt.head())
         referenzen_dict_gekuerzt.to_excel(export_path, index=False)
+
+    @staticmethod
+    def SplitTextbodyIntoSentences(text: str, logger) -> list:
+        """
+        Teilt einen Textkoerper mit spaCys blank-Modell in Saetze auf.
+        """
+        try:
+            import spacy
+
+            nlp = spacy.blank("de")
+            nlp.add_pipe("sentencizer")
+            doc = nlp(text)
+
+            return [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+
+        except Exception as e:
+            logger.error(f"SplitTextbodyIntoSentences: Text konnte nicht in Saetze aufgeteilt werden. Fehler: {e}")
+            return []
+
+    @staticmethod
+    def BuildIterableForStrings(limit_sentence_count: int, limit_sentence_length: int, sentences: list, logger=None) -> dict:
+        """
+        Baut ein Dictionary, das Auswahlziffern Saetzen aus einer Satzliste zuordnet.
+        """
+        if not isinstance(sentences, list) or not all(isinstance(sentence, str) for sentence in sentences):
+            if logger:
+                logger.error("BuildIterableForStrings: Erwartet eine Liste mit Strings.")
+            return {}
+
+        sentence_dictionary = {}
+        for sentence in sentences:
+            if len(sentence_dictionary) >= limit_sentence_count:
+                break
+
+            if len(sentence.split()) <= limit_sentence_length:
+                sentence_dictionary[len(sentence_dictionary)] = sentence
+
+        return sentence_dictionary
+
+    def DisplayAndChooseSentence(self, logger = None, limit_sentence_count = 5, limit_sentence_length = 23):
+        """
+        Interaktive Auswahl ist noch nicht implementiert.
+
+        Die Satzliste fuer die Auswahl soll vorab erzeugt und mit
+        BuildIterableForStrings begrenzt und nummeriert werden.
+        """
+        pass

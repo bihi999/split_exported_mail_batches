@@ -1,0 +1,24 @@
+classDiagram
+    namespace classes.mail_model {
+        class Mail
+    }
+
+    namespace classes.mail_repository {
+        class DictForMail
+    }
+
+    namespace classes.csvfile {
+        class ValidationResult
+        class CSVHandler
+    }
+
+    namespace classes.matches {
+        class ContactMatch
+        class Matcher
+        class DictionaryMatcher
+    }
+
+    DictForMail "1" o-- "*" Mail
+    Mail "1" o-- "*" ContactMatch
+    DictionaryMatcher --|> Matcher
+    Matcher ..> ContactMatch
