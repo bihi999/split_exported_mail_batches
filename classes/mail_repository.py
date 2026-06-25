@@ -361,7 +361,15 @@ class DictForMail:
 
         except Exception as e:
             logger.error(f"SplitTextbodyIntoSentences: Text konnte nicht in Saetze aufgeteilt werden. Fehler: {e}")
-            return []
+
+        import re
+
+        sentence_pattern = re.compile(r'(?<=[.!?])\s+')
+        return [
+            sentence.strip()
+            for sentence in sentence_pattern.split(text.strip())
+            if sentence.strip()
+        ]
 
     @staticmethod
     def BuildIterableForStrings(limit_sentence_count: int, limit_sentence_length: int, sentences: list, logger=None) -> dict:

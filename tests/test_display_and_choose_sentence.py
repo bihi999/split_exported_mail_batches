@@ -152,8 +152,8 @@ def test_split_textbody_into_sentences_logs_error_when_spacy_fails(monkeypatch):
     fake_spacy = types.SimpleNamespace(blank=raise_error)
     monkeypatch.setitem(sys.modules, "spacy", fake_spacy)
 
-    result = DictForMail.SplitTextbodyIntoSentences("Ein Satz.", logger)
+    result = DictForMail.SplitTextbodyIntoSentences("Ein Satz. Zweiter Satz!", logger)
 
-    assert result == []
+    assert result == ["Ein Satz.", "Zweiter Satz!"]
     assert len(logger.errors) == 1
     assert logger.errors[0].startswith("SplitTextbodyIntoSentences:")
