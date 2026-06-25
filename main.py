@@ -9,6 +9,12 @@ import logging
 from classes import mail
 from classes.csvfile import CSVHandler
 from classes.matches import ContactMatch, Matcher, DictionaryMatcher
+from klickertool.klickertool import (
+    DataFrameSource,
+    DataFrameSourceConfig,
+    KlickerConfig,
+    run_klickertool,
+)
 
 
 from korpus import ausgeschieden_korpus01
@@ -156,6 +162,21 @@ if __name__ == "__main__":
         logger,
         "ausgeschieden",
     )
+
+    df_klickertool_input = None  # TODO: DataFrame fuer die manuelle Auswahl aus dem main.py-Lauf definieren.
+    if df_klickertool_input is not None:
+        klicker_config = KlickerConfig(
+            output_path=os.path.join(filepath_ausgabe_rohdaten, "klickertool_results.xlsx"),
+            group_column="TODO_GROUP_COLUMN",
+            display_columns=["TODO_GROUP_COLUMN"],
+        )
+        klicker_source = DataFrameSource(
+            DataFrameSourceConfig(
+                dataframe=df_klickertool_input,
+            ),
+            logger=logger,
+        )
+        run_klickertool(klicker_config, klicker_source, logger)
 
 
 

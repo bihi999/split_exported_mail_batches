@@ -1,0 +1,80 @@
+@startuml
+title Klickertool - Vorgeschlagene Modulstruktur
+
+skinparam classAttributeIconSize 0
+
+class KlickerConfig <<dataclass>> {
+  +input_path: str | None
+  +output_path: str
+  +group_column: str
+  +display_columns: list[str]
+  +status_column: str = "Status"
+  +done_value: str = "done"
+  +sheet_candidates: tuple[str, ...]
+  +window_title: str
+}
+
+class ExcelDataSource {
+  -config: KlickerConfig
+  -logger
+  +load_main_dataframe(): DataFrame
+  +load_all_sheets(): dict[str, DataFrame]
+  -find_sheet_name(): str
+}
+
+class SelectionRepository {
+  -config: KlickerConfig
+  -data: DataFrame
+  -all_sheets: dict[str, DataFrame]
+  -logger
+  +from_excel(config, logger): SelectionRepository
+  +get_next_group(): tuple[object, DataFrame]
+  +save_selected_row(group_key, row_idx): None
+  +mark_group_as_done(group_key): None
+  +save_state(): None
+  +is_processed(): bool
+}
+
+class KlickerGUI {
+  -repository: SelectionRepository
+  -config: KlickerConfig
+  -logger
+  -root
+  -table
+  +run(): None
+  -display_next_group(): None
+  -display_group(group_data: DataFrame): None
+  -on_row_select(event): None
+  -on_stop(): None
+  -on_resume(): None
+}
+
+class KlickerResultWriter {
+  -config: KlickerConfig
+  -logger
+  +append_row(row: DataFrame): None
+  +write_rows(rows: DataFrame): None
+}
+
+class MainPy <<client>> {
+  +main(): None
+}
+
+class "run_klickertool()" as RunKlickertool <<function>> {
+  +run_klickertool(config: KlickerConfig, logger=None): None
+}
+
+MainPy ..> KlickerConfig : erstellt
+MainPy ..> RunKlickertool : ruft auf
+
+RunKlickertool ..> SelectionRepository : erzeugt
+RunKlickertool ..> KlickerGUI : erzeugt/startet
+
+SelectionRepository ..> ExcelDataSource : liest Daten
+SelectionRepository ..> KlickerResultWriter : schreibt Auswahl
+SelectionRepository --> KlickerConfig
+ExcelDataSource --> KlickerConfig
+KlickerGUI --> KlickerConfig
+KlickerGUI --> SelectionRepository
+
+@enduml

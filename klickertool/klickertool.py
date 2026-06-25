@@ -1,8 +1,253 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Protocol
+
 import pandas as pd
 import os
-import tkinter as tk
-from pandastable import Table, TableModel
-from tkinter import messagebox
+
+
+@dataclass
+class KlickerConfig:
+    output_path: str
+    group_column: str
+    display_columns: list[str]
+    status_column: str = "Status"
+    done_value: str = "done"
+    window_title: str = "Manual Data Selector"
+
+
+@dataclass
+class ExcelSourceConfig:
+    input_path: str
+    sheet_candidates: tuple[str, ...] = ("Daten", "Sheet1")
+
+
+@dataclass
+class DataFrameSourceConfig:
+    dataframe: pd.DataFrame
+    all_sheets: dict[str, pd.DataFrame] | None = None
+
+
+class DataSource(Protocol):
+    def load_main_dataframe(self) -> pd.DataFrame:
+        ...
+
+    def load_all_sheets(self) -> dict[str, pd.DataFrame]:
+        ...
+
+    def save_state(self, all_sheets: dict[str, pd.DataFrame]) -> None:
+        ...
+
+
+class ExcelDataSource:
+    def __init__(self, config: ExcelSourceConfig, logger=None):
+        self.config = config
+        self.logger = logger
+        self._excel_file = pd.ExcelFile(self.config.input_path)
+
+    def _find_sheet_name(self) -> str:
+        for sheet_name in self.config.sheet_candidates:
+            if sheet_name in self._excel_file.sheet_names:
+                return sheet_name
+
+        message = (
+            "ExcelDataSource: Keine passende Tabelle gefunden. "
+            f"Erwartet eine von {self.config.sheet_candidates}, gefunden {self._excel_file.sheet_names}."
+        )
+        if self.logger:
+            self.logger.error(message)
+        raise ValueError(message)
+
+    def load_main_dataframe(self) -> pd.DataFrame:
+        return pd.read_excel(self.config.input_path, sheet_name=self._find_sheet_name())
+
+    def load_all_sheets(self) -> dict[str, pd.DataFrame]:
+        return {
+            sheet_name: pd.read_excel(self.config.input_path, sheet_name=sheet_name)
+            for sheet_name in self._excel_file.sheet_names
+        }
+
+    def save_state(self, all_sheets: dict[str, pd.DataFrame]) -> None:
+        with pd.ExcelWriter(self.config.input_path, engine="openpyxl") as writer:
+            for sheet_name, dataframe in all_sheets.items():
+                dataframe.to_excel(writer, sheet_name=sheet_name, index=False)
+
+
+class DataFrameSource:
+    def __init__(self, config: DataFrameSourceConfig, logger=None):
+        self.config = config
+        self.logger = logger
+
+    def load_main_dataframe(self) -> pd.DataFrame:
+        return self.config.dataframe.copy()
+
+    def load_all_sheets(self) -> dict[str, pd.DataFrame]:
+        if self.config.all_sheets is not None:
+            return {
+                sheet_name: dataframe.copy()
+                for sheet_name, dataframe in self.config.all_sheets.items()
+            }
+        return {"DataFrame": self.config.dataframe.copy()}
+
+    def save_state(self, all_sheets: dict[str, pd.DataFrame]) -> None:
+        if self.logger:
+            self.logger.info("DataFrameSource: Status wird nur im laufenden DataFrame gehalten.")
+
+
+class KlickerResultWriter:
+    def __init__(self, config: KlickerConfig, logger=None):
+        self.config = config
+        self.logger = logger
+        self.output_path = Path(config.output_path)
+
+    def append_row(self, row: pd.DataFrame) -> None:
+        if self.output_path.exists():
+            existing_data = pd.read_excel(self.output_path)
+            output_data = pd.concat([existing_data, row], ignore_index=True)
+        else:
+            output_data = row.copy()
+
+        output_data.to_excel(self.output_path, index=False)
+
+
+class SelectionRepository:
+    def __init__(self, source: DataSource, config: KlickerConfig, logger=None):
+        self.source = source
+        self.config = config
+        self.logger = logger
+        self.result_writer = KlickerResultWriter(config, logger)
+        self.data = self.source.load_main_dataframe()
+        self.all_sheets = self.source.load_all_sheets()
+        self._validate_required_columns()
+        self.groups = self._build_groups()
+
+    def _log_and_raise(self, message: str) -> None:
+        if self.logger:
+            self.logger.error(message)
+        raise ValueError(message)
+
+    def _validate_required_columns(self) -> None:
+        required_columns = [self.config.group_column, self.config.status_column]
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in self.data.columns
+        ]
+        if missing_columns:
+            self._log_and_raise(f"SelectionRepository: Pflichtspalten fehlen: {missing_columns}")
+
+        missing_display_columns = [
+            column
+            for column in self.config.display_columns
+            if column not in self.data.columns
+        ]
+        if missing_display_columns:
+            self._log_and_raise(f"SelectionRepository: Anzeigespalten fehlen: {missing_display_columns}")
+
+        if self.data[self.config.group_column].isna().all():
+            self._log_and_raise(
+                "SelectionRepository: Gruppierung nicht moeglich, "
+                f"Spalte '{self.config.group_column}' enthaelt nur leere Werte."
+            )
+
+    def _build_groups(self):
+        return self.data.groupby(self.config.group_column, dropna=False)
+
+    def get_next_group(self):
+        for group_name, group_data in self.groups:
+            if self.config.done_value not in group_data[self.config.status_column].values:
+                return group_name, group_data
+        return None, None
+
+    def save_selected_row(self, group_key, row_idx: int) -> None:
+        group_data = self.data[self.data[self.config.group_column] == group_key]
+        row = group_data.iloc[[row_idx]]
+        self.result_writer.append_row(row)
+
+    def mark_group_as_done(self, group_key) -> None:
+        group_mask = self.data[self.config.group_column] == group_key
+        self.data.loc[group_mask, self.config.status_column] = self.config.done_value
+
+        for dataframe in self.all_sheets.values():
+            if self.config.group_column in dataframe.columns and self.config.status_column in dataframe.columns:
+                sheet_mask = dataframe[self.config.group_column] == group_key
+                dataframe.loc[sheet_mask, self.config.status_column] = self.config.done_value
+
+    def save_state(self) -> None:
+        self.source.save_state(self.all_sheets)
+
+    def is_processed(self) -> bool:
+        return self.config.done_value not in self.data[self.config.status_column].values
+
+
+class KlickerGUI:
+    def __init__(self, repository: SelectionRepository, config: KlickerConfig, logger=None):
+        import tkinter as tk
+        from pandastable import Table, TableModel
+        from tkinter import messagebox
+
+        self.TableModel = TableModel
+        self.messagebox = messagebox
+        self.repository = repository
+        self.config = config
+        self.logger = logger
+
+        self.root = tk.Tk()
+        self.root.title(self.config.window_title)
+
+        self.button_frame = tk.Frame(self.root)
+        self.button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self.stop_button = tk.Button(self.button_frame, text="Stop", command=self.on_stop)
+        self.stop_button.pack(side=tk.LEFT)
+
+        self.resume_button = tk.Button(self.button_frame, text="Resume", command=self.on_resume)
+        self.resume_button.pack(side=tk.LEFT)
+
+        self.table_frame = tk.Frame(self.root)
+        self.table_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.table = Table(self.table_frame, dataframe=pd.DataFrame())
+        self.table.show()
+        self.display_next_group()
+
+    def display_group(self, group_data: pd.DataFrame) -> None:
+        display_data = group_data[self.config.display_columns]
+        self.table.updateModel(self.TableModel(display_data))
+        self.table.redraw()
+        self.table.bind("<ButtonRelease-1>", self.on_row_select)
+
+    def on_row_select(self, event) -> None:
+        selected_row_idx = self.table.getSelectedRow()
+        selected_group_key = self.table.model.df.iloc[selected_row_idx][self.config.group_column]
+        self.repository.save_selected_row(selected_group_key, selected_row_idx)
+        self.repository.mark_group_as_done(selected_group_key)
+        self.display_next_group()
+
+    def display_next_group(self) -> None:
+        group_name, group_data = self.repository.get_next_group()
+        if group_data is not None:
+            self.display_group(group_data)
+        else:
+            self.messagebox.showinfo("Information", "Alle Gruppen wurden bearbeitet.")
+
+    def on_stop(self) -> None:
+        self.root.destroy()
+
+    def on_resume(self) -> None:
+        self.display_next_group()
+
+    def run(self) -> None:
+        self.root.mainloop()
+
+
+def run_klickertool(config: KlickerConfig, source: DataSource, logger=None) -> None:
+    repository = SelectionRepository(source, config, logger)
+    gui = KlickerGUI(repository, config, logger)
+    gui.run()
+    repository.save_state()
 
 
 class ExcelFile:
@@ -147,6 +392,12 @@ class DataHandler:
 
 class GUIHandler:
     def __init__(self, data_handler):
+        global tk, Table, TableModel, messagebox
+
+        import tkinter as tk
+        from pandastable import Table, TableModel
+        from tkinter import messagebox
+
         self.data_handler = data_handler
 
         # Setting up the Tkinter Window

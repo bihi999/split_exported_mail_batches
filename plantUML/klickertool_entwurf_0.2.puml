@@ -1,0 +1,139 @@
+@startuml
+title Klickertool - Struktur mit getrennten Data Sources
+
+skinparam classAttributeIconSize 0
+
+class KlickerConfig <<dataclass>> {
+  +output_path: str
+  +group_column: str
+  +display_columns: list[str]
+  +status_column: str = "Status"
+  +done_value: str = "done"
+  +window_title: str = "Manual Data Selector"
+}
+
+class ExcelSourceConfig <<dataclass>> {
+  +input_path: str
+  +sheet_candidates: tuple[str, ...] = ("Daten", "Sheet1")
+}
+
+class DataFrameSourceConfig <<dataclass>> {
+  +dataframe: DataFrame
+  +all_sheets: dict[str, DataFrame] | None = None
+}
+
+interface DataSource {
+  +load_main_dataframe(): DataFrame
+  +load_all_sheets(): dict[str, DataFrame]
+  +save_state(all_sheets: dict[str, DataFrame]): None
+}
+
+class ExcelDataSource {
+  -config: ExcelSourceConfig
+  -logger
+  -selected_sheet_name: str
+  +load_main_dataframe(): DataFrame
+  +load_all_sheets(): dict[str, DataFrame]
+  +save_state(all_sheets: dict[str, DataFrame]): None
+  -find_sheet_name(): str
+}
+
+class DataFrameSource {
+  -config: DataFrameSourceConfig
+  -logger
+  +load_main_dataframe(): DataFrame
+  +load_all_sheets(): dict[str, DataFrame]
+  +save_state(all_sheets: dict[str, DataFrame]): None
+}
+
+class SelectionRepository {
+  -config: KlickerConfig
+  -source: DataSource
+  -data: DataFrame
+  -all_sheets: dict[str, DataFrame]
+  -logger
+  +get_next_group(): tuple[object, DataFrame]
+  +save_selected_row(group_key, row_idx): None
+  +mark_group_as_done(group_key): None
+  +save_state(): None
+  +is_processed(): bool
+  -validate_required_columns(): None
+  -build_groups(): DataFrameGroupBy
+}
+
+class KlickerResultWriter {
+  -config: KlickerConfig
+  -logger
+  +append_row(row: DataFrame): None
+  +write_rows(rows: DataFrame): None
+}
+
+class KlickerGUI {
+  -repository: SelectionRepository
+  -config: KlickerConfig
+  -logger
+  -root
+  -table
+  +run(): None
+  -display_next_group(): None
+  -display_group(group_data: DataFrame): None
+  -on_row_select(event): None
+  -on_stop(): None
+  -on_resume(): None
+}
+
+class "run_klickertool()" as RunKlickertool <<function>> {
+  +run_klickertool(config: KlickerConfig, source: DataSource, logger=None): None
+}
+
+class MainPy <<client>> {
+  +main(): None
+}
+
+DataSource <|.. ExcelDataSource
+DataSource <|.. DataFrameSource
+
+ExcelDataSource --> ExcelSourceConfig
+DataFrameSource --> DataFrameSourceConfig
+
+SelectionRepository --> KlickerConfig
+SelectionRepository --> DataSource
+SelectionRepository --> KlickerResultWriter
+
+KlickerResultWriter --> KlickerConfig
+
+KlickerGUI --> SelectionRepository
+KlickerGUI --> KlickerConfig
+
+RunKlickertool ..> KlickerConfig
+RunKlickertool ..> DataSource
+RunKlickertool ..> SelectionRepository
+RunKlickertool ..> KlickerGUI
+
+MainPy ..> KlickerConfig
+MainPy ..> ExcelSourceConfig
+MainPy ..> DataFrameSourceConfig
+MainPy ..> ExcelDataSource
+MainPy ..> DataFrameSource
+MainPy ..> RunKlickertool
+
+note right of KlickerConfig
+  Enthält nur Anzeige-, Auswahl-
+  und Ergebnisparameter.
+  Keine Information über die Datenquelle.
+end note
+
+note right of SelectionRepository
+  Validiert vor groupby:
+  - group_column existiert
+  - status_column existiert
+  - group_column enthält gruppierbare Werte
+end note
+
+note bottom of DataSource
+  Quelle ist austauschbar:
+  Excel-Datei oder bereits erzeugter DataFrame
+  aus main.py.
+end note
+
+@enduml
